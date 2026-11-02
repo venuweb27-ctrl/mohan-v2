@@ -1,0 +1,7 @@
+<resources>
+    <color name="navy">#123B65</color>
+    <color name="navy_dark">#0F2F52</color>
+    <color name="amber">#F59E0B</color>
+    <color name="surface">#F8FAFC</color>
+    <color name="ic_launcher_background">#123B65</color>
+</resources>

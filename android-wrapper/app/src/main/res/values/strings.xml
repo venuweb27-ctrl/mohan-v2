@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Mohan Mishra</string>
+    <string name="tagline">Machinery &amp; Industrial Equipment</string>
+    <string name="offline_title">You are offline</string>
+    <string name="offline_body">Check your internet connection and try again.</string>
+    <string name="retry">Retry</string>
+</resources>
