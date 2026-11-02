@@ -38,8 +38,11 @@
  --md-elev-1:0 1px 2px rgba(0,0,0,.4);--md-elev-2:0 2px 6px rgba(0,0,0,.45);--md-elev-3:0 6px 18px rgba(0,0,0,.5);
  --chart-1:#A8C8F0;--chart-2:#F59E0B;--green2:#4ADE80;--amber2:#FBBF24;
  color-scheme:dark}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;overflow-x:hidden}html{-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--md-background)}
-body{font:15px/1.5 "Roboto","Inter","Segoe UI",system-ui,-apple-system,"Noto Sans",sans-serif;color:var(--md-on-background);background:var(--md-background);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;min-height:100vh;min-height:100dvh}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+/* Scroll fix (v7): only <html> may clip horizontally. overflow-x:hidden on BOTH html and body turned <body> into its own
+   (non-scrolling) scroll container, and body's overscroll-behavior:none then stopped touch scroll chaining to the page. */
+html{overflow-x:hidden;overscroll-behavior-y:none}body{overflow-x:clip}html{-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--md-background)}
+body{font:15px/1.5 "Roboto","Inter","Segoe UI",system-ui,-apple-system,"Noto Sans",sans-serif;color:var(--md-on-background);background:var(--md-background);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;min-height:100vh;min-height:100dvh}
 #bg{display:none}
 a{color:var(--md-primary);text-decoration:none}a:hover{text-decoration:underline;text-underline-offset:2px}
 h1,h2,h3,h4{margin:var(--sp-1) 0 var(--sp-2);line-height:1.25;letter-spacing:0;color:var(--md-on-surface)}h1{font-size:1.75rem;font-weight:700}h2{font-size:1.375rem;font-weight:700}h3{font-size:1.0625rem;font-weight:600}
