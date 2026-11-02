@@ -42,7 +42,7 @@ const WANT = new Set(['m360-home', 'm390-product', 'm390-cart', 'm390-checkout',
     ok(!a.offenders.length, `${where}: no element overflows outside a scroll wrapper${a.offenders.length ? ' → ' + a.offenders.slice(0, 4).join(', ') : ''}`);
     ok(a.radius.every(r => r >= 10 && r <= 12), `${where}: buttons radius 10–12px${a.radius.some(r => r < 10 || r > 12) ? ' → ' + [...new Set(a.radius)].join(',') : ''}`);
     ok(a.buy.every(x => x.startsWith('rgb(245, 158, 11)')), `${where}: purchase buttons are #F59E0B${a.buy.length ? ' (' + a.buy.length + ')' : ''}${a.buy.some(x => !x.startsWith('rgb(245, 158, 11)')) ? ' → ' + a.buy.join(';') : ''}`);
-    const bad = a.text.match(/.{0,30}\b(undefined|NaN)\b.{0,20}/); ok(!bad, `${where}: no undefined/NaN text${bad ? ' → ' + bad[0] : ''}`);
+    const bad = a.text.match(/.{0,30}\b(undefined|NaN)\b.{0,20}/); ok(!bad, `${where}: no undefined/NaN text${bad ? ' → ' + bad[0] : ''}`); const rent = a.text.match(/.{0,30}\brent(al|als|ing)?\b.{0,20}/i); ok(!rent, `${where}: no rent/rental text${rent ? ' → ' + rent[0] : ''}`);
     ok(!a.spacing.length, `${where}: spacing on the 4/8px grid${a.spacing.length ? ' → ' + a.spacing.slice(0, 3).join(', ') : ''}`);
     if (w < 768) {
       ok(!!a.bn && a.bn.bottom >= a.W * 0 + H(w) - 2 && a.bn.items.every(h => h >= 48), `${where}: bottom nav visible, docked, targets ≥48px${a.bn ? ' (' + a.bn.items.map(Math.round) + ')' : ''}`);

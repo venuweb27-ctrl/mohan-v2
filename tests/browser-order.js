@@ -33,7 +33,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await pg.click('input[name=plan][value=advance]'); await click('button', 'Place order'); await waitT('#modal h3', 'Secure payment'); await shot('order-5-payment');
     await click('#modal button', 'Pay successfully'); await pg.waitForFunction(() => /#\/orders\/\d+/.test(location.hash), { timeout: 10000 });
     await waitT('h1,h2,h3', 'Order'); await sleep(500); await shot('order-6-confirmation');
-    const oid = +pg.url().match(/orders\/(\d+)/)[1]; ok(oid > 0, 'order placed & confirmation shown');
+    const oid = +pg.url().match(/orders\/(\d+)/)[1]; ok(oid > 0, 'order placed & confirmation shown'); { const rt = (await pg.evaluate(() => document.body.innerText)).match(/.{0,30}\brent(al|als|ing)?\b.{0,20}/i); ok(!rt, 'order confirmation has no rent/rental text' + (rt ? ' → ' + rt[0] : '')); }
     ok(await pg.evaluate(() => !!document.querySelector('.timeline')), 'order status timeline shown');
     await pg.goto(B + '/#/orders', { waitUntil: 'networkidle2' }); await sleep(500); ok(await pg.evaluate(id => !!document.querySelector(`a[href="#/orders/${id}"]`), oid), 'order listed in My Orders'); await shot('order-7-myorders');
     const sub = await pg.evaluate(async id => { const t = localStorage.getItem('mm_token'); return (await (await fetch('/api/v1/orders/' + id, { headers: { authorization: 'Bearer ' + t } })).json()); }, oid);

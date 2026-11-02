@@ -25,8 +25,8 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 
 ## Catalog & discovery
 - ✅ Categories/sub-categories, brands, attributes
-- ✅ Product detail: gallery, specs, GST, MOQ, transport/installation charges, rental rates, vendor card, reviews
-- ✅ Search with suggestions, popular & history, filters (category, brand, price, condition, rent/buy, city), sorting
+- ✅ Product detail: gallery, specs, GST, MOQ, transport/installation charges, vendor card, reviews
+- ✅ Search with suggestions, popular & history, filters (category, brand, price, condition, city), sorting
 - 🟡 "Near me" — lat/lng radius filter + approximate (planar) distance sort, not true geodesic/road distance
 - ✅ Wishlist, compare, recently viewed, share link, report listing
 - ✅ Vendor storefront page
@@ -55,11 +55,6 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 - ✅ Enquiry (RFQ) → vendor quotation → customer negotiation/counter → revised version → proforma invoice → accept → convert to order → advance + balance payments — e2e
 - ✅ Quote validity, payment terms, transport/installation lines, version history
 
-## Rentals
-- ✅ Rental quote (hourly/daily/weekly/monthly), availability check, security deposit — e2e
-- ✅ Vendor approve/reject, advance + balance payment, start, extension request/approve, return with late/damage charges, close with deposit refund — e2e
-- ✅ Vendor rental calendar view
-
 ## Invoices & GST
 - ✅ GST tax invoices per sub-order with FY numbering (e.g. `MMT/26-27/00001`), PDF (pdfkit) — e2e
 - ✅ Proforma invoices, credit notes (returns), debit notes, manual invoices, cancellation — e2e
@@ -73,15 +68,14 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 - ✅ Registration with OTP, onboarding checklist, business/GSTIN/PAN/bank, document upload, agreements, submit KYC — e2e
 - 🟡 GSTIN verification — mock provider (format + state code); real GST API adapter stubbed
 - ✅ Dashboard KPIs + canvas charts (daily, monthly), top products, recent orders
-- ✅ Products CRUD with images, specs JSON, rent/buy settings; re-approval on material edits; duplicate; enable/disable
+- ✅ Products CRUD with images, specs JSON, purchase settings; re-approval on material edits; duplicate; enable/disable
 - ✅ Inventory & low-stock alerts, quick stock update
 - ✅ CSV export & import
 - ✅ Order management with status actions & dispatch docs — e2e
 - ✅ Returns/refund requests response
 - ✅ Enquiries & quotations (create, revise, proforma)
-- ✅ Rentals actions & calendar
 - ✅ Wallet (available / on-hold / pending settlement), ledger, commission statement, withdrawals — e2e
-- ✅ Reports with CSV (sales, products, GST, commission, payouts, rentals)
+- ✅ Reports with CSV (sales, products, GST, commission, payouts)
 - ✅ Vendor staff accounts
 - ✅ Vendor CRM leads with click-to-call (mock)
 - ✅ Store profile (logo, hours, about, location)
@@ -93,7 +87,7 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 - ✅ Categories, brands, attributes, commission rules, coupons, banners, CMS pages, FAQs, announcements (generic CRUD)
 - ✅ Reviews moderation
 - ✅ Orders with sub-order status override, offline payment, refund
-- ✅ Enquiries, quotations, rentals, commissions, payments, webhooks views
+- ✅ Enquiries, quotations, commissions, payments, webhooks views
 - ✅ Withdrawals: approve / reject / pay (mock payout) / mark paid with UTR — e2e
 - 🟡 Payouts — mock payout provider; RazorpayX/Cashfree adapters stubbed
 - ✅ Invoices: manual, credit/debit note, cancel, PDF
@@ -101,7 +95,7 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 - ✅ Broadcast notifications (in-app + mock outbox)
 - ✅ CRM leads, pipeline, follow-ups, click-to-call (mock bridge) — e2e
 - ✅ Tickets, abuse reports, feedback
-- ✅ Reports with CSV (sales, vendors, products, GST, commission, payments, payouts, refunds, rentals, customers, CRM) — e2e
+- ✅ Reports with CSV (sales, vendors, products, GST, commission, payments, payouts, refunds, customers, CRM) — e2e
 - ✅ Staff & roles with permission matrix — e2e
 - ✅ Audit logs, login history, notification outbox
 - ✅ Settings (JSON editor), providers status

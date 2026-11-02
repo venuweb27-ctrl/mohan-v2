@@ -24,7 +24,7 @@ async function main() {
   const home = must(await call('GET', '/home'), 'home feed'); ok(home.featured?.length > 0 && home.categories?.length > 0, 'home has featured & categories');
   const search = must(await call('GET', '/products?q=generator&sort=price_asc'), 'search generator'); ok(search.items.length > 0, 'search returns items');
   must(await call('GET', '/search/suggest?q=jc'), 'suggest');
-  const rentList = must(await call('GET', '/products?mode=rental'), 'rental filter'); ok(rentList.items.every(p => p.rental_available), 'rental filter only rentals');
+  const rentList = must(await call('GET', '/products?mode=rental'), 'legacy mode=rental param is ignored'); ok(rentList.items.length > 0 && rentList.items.every(p => p.purchase_available), 'mode=rental no longer filters to rentals');
 
   step('Customer OTP registration');
   const mobile = '98' + String(Date.now()).slice(-8);
@@ -115,25 +115,9 @@ async function main() {
   must(await call('POST', '/payments/mock/complete', { gateway_order_id: bal.payment.gateway_order_id }, C), 'pay balance');
   ok(must(await call('GET', '/orders/' + qo.id, undefined, C), 'quote order paid').payment_status === 'paid', 'balance → fully paid');
 
-  step('Rental: request → approve → advance → start → return → close (deposit refund)');
-  const rp = must(await call('GET', '/products?q=Kirloskar%205%20kVA'), 'find rental').items[0];
-  const start = new Date(Date.now() + 2 * 864e5).toISOString();
-  const rq = must(await call('POST', '/rentals/quote', { product_id: rp.id, unit: 'day', duration: 3, start_at: start, address_id: A }, C), 'rental quote'); ok(rq.total > 0, 'rental priced');
-  const rent = must(await call('POST', '/rentals', { product_id: rp.id, unit: 'day', duration: 3, start_at: start, address_id: A }, C), 'rental request', [201]);
-  const RV = must(await call('POST', '/auth/login', { identifier: 'vendor' + rp.vendor_id + '@mohanmishra.in', password: 'Vendor@123' }), 'rental vendor login').token;
-  must(await call('POST', `/vendor/rentals/${rent.id}/action`, { action: 'approve' }, RV), 'vendor approves rental');
-  const ra = must(await call('POST', '/payments/init', { rental_id: rent.id, purpose: 'advance', provider: 'mock' }, C), 'rental advance init');
-  must(await call('POST', '/payments/mock/complete', { gateway_order_id: ra.payment.gateway_order_id }, C), 'rental advance paid');
-  const rb0 = must(await call('POST', '/payments/init', { rental_id: rent.id, purpose: 'balance', provider: 'mock' }, C), 'rental balance+deposit init');
-  must(await call('POST', '/payments/mock/complete', { gateway_order_id: rb0.payment.gateway_order_id }, C), 'rental balance+deposit paid');
-  must(await call('POST', `/vendor/rentals/${rent.id}/action`, { action: 'start' }, RV), 'rental started');
-  must(await call('POST', `/rentals/${rent.id}/extend`, { duration: 1 }, C), 'extension requested');
-  must(await call('POST', `/vendor/rentals/${rent.id}/action`, { action: 'extension_approve' }, RV), 'extension approved');
-  must(await call('POST', `/vendor/rentals/${rent.id}/action`, { action: 'return', late_charge: 0, damage_charge: 0 }, RV), 'machine returned');
-  let rd = must(await call('GET', `/rentals/${rent.id}`, undefined, C), 'rental detail');
-  if (rd.amount_due > 0) { const rb = must(await call('POST', '/payments/init', { rental_id: rent.id, purpose: 'balance', provider: 'mock' }, C), 'rental extension charges init'); must(await call('POST', '/payments/mock/complete', { gateway_order_id: rb.payment.gateway_order_id }, C), 'rental extension charges paid'); }
-  must(await call('POST', `/vendor/rentals/${rent.id}/action`, { action: 'close' }, RV), 'rental closed');
-  rd = must(await call('GET', `/rentals/${rent.id}`, undefined, C), 'rental final'); ok(rd.status === 'closed' && rd.deposit_refund > 0, 'deposit refunded', { st: rd.status, dr: rd.deposit_refund }); ok(rd.invoices?.some(i => i.type === 'rental'), 'rental invoice');
+  step('Rentals are switched off: API endpoints return 404, rental-only data hidden');
+  for (const [m, u, t] of [['GET', '/rentals', C], ['POST', '/rentals/quote', C], ['POST', '/rentals', C], ['GET', '/rentals/1', C], ['GET', '/vendor/rentals', null], ['GET', '/vendor/rentals/calendar', null], ['GET', '/admin/rentals', ADM]]) { const r = await call(m, u, m === 'POST' ? { product_id: 1, unit: 'day', duration: 1 } : undefined, t); ok(r.status === 404, `${m} ${u} → 404`, r.status); }
+  ok((must(await call('GET', '/home'), 'home').rental || []).length === 0, 'home has no rental section');
   ok(must(await call('GET', '/admin/ledger', undefined, ADM), 'ledger final').trial_balance_ok, 'ledger balances at end');
 
   step('Cancellation before dispatch (auto refund)');
@@ -220,6 +204,8 @@ async function main() {
   step('Play Store: legal pages, deletion requests, app links');
   for (const u of ['/privacy', '/terms', '/delete-account']) { const r = await fetch(BASE + u); const t = await r.text(); ok(r.status === 200 && /Mohan Mishra Multitrade Private Limited/.test(t), `${u} page served`); }
   ok(/enterprisesconsolemohanmishra@gmail\.com/.test(await (await fetch(BASE + '/privacy')).text()), 'privacy policy has deletion contact email');
+  { const pv = await (await fetch(BASE + '/privacy')).text(); ok(/U52100CT2011PTC000081/.test(pv) && /09AAHCM7149Q1ZK/.test(pv) && /Mohan Lal Mishra/.test(pv) && /mohanmishra9999@gmail\.com/.test(pv) && !/to be added/.test(pv), 'privacy policy has company CIN, GSTIN, grievance officer, no placeholders'); }
+  { const cf = await (await fetch(BASE + '/api/v1/config')).json(); ok(cf.company.gstin === '09AAHCM7149Q1ZK' && cf.company.state_code === '09' && cf.support.email === 'mohanmishra9999@gmail.com', 'platform company/support defaults are the real company details'); }
   const dr = must(await call('POST', '/public/deletion-request', { name: 'Rahul', contact: 'rahul@example.com', reason: 'test' }), 'public deletion request', [201]); ok(dr.id > 0, 'deletion request recorded');
   ok((await call('POST', '/public/deletion-request', {})).status === 400, 'deletion request needs contact');
   const al = await (await fetch(BASE + '/.well-known/assetlinks.json')).json(); const fps = al[0]?.target?.sha256_cert_fingerprints || [];

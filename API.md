@@ -31,7 +31,7 @@ List endpoints accept `?page=1&limit=20` and return `{ items, total, page, limit
 `POST /checkout`, `POST /payments/init` accept `Idempotency-Key` header; repeats return the original result.
 
 ## Core purchase flow
-1. `GET /products` — filters: `q, category_id, subcategory_id, brand_id, manufacturer, min_price, max_price, condition, mode (buy|rent), availability, in_stock, city, state, fuel_type, year_min, vendor_id, vendor_rating, featured, lat, lng, radius_km`; `sort = relevance|price_asc|price_desc|popular|newest|rating|distance`
+1. `GET /products` — filters: `q, category_id, subcategory_id, brand_id, manufacturer, min_price, max_price, condition, availability, in_stock, city, state, fuel_type, year_min, vendor_id, vendor_rating, featured, lat, lng, radius_km`; `sort = relevance|price_asc|price_desc|popular|newest|rating|distance`
 2. `POST /cart/items {product_id, qty}` · `PATCH /cart/items/:pid {qty}` · `POST /cart/apply-coupon {code}`
 3. `POST /auth/me/addresses {name, mobile, line1, line2?, city, state, pincode (6 digits), gstin?, label?, kind?: billing|shipping|both, lat?, lng?, is_default?}`
 4. `POST /checkout {billing_address_id, shipping_address_id, payment_plan: "full"|"advance"|"partial", coupon_code?, gstin?, notes?}` → order with `sub_orders[]` (one per vendor; CGST+SGST or IGST)
@@ -43,8 +43,6 @@ List endpoints accept `?page=1&limit=20` and return `{ items, total, page, limit
 ## Quotation (B2B) flow
 `POST /enquiries {product_id?, vendor_id?, title, requirements, qty, budget?, location?}` → vendor `POST /vendor/quotations {enquiry_id, items[], transport, installation, discount, valid_until, payment_terms}` → customer `POST /quotations/:id/revision {note, counter_price?}` → vendor `POST /vendor/quotations/:id/revise` → `POST /vendor/quotations/:id/proforma` → customer `POST /quotations/:id/accept` → `POST /quotations/:id/convert {address_id, payment_plan}` → pay advance/balance via `/payments/init`.
 
-## Rental flow
-`POST /rentals/quote {product_id, unit:"hour"|"day"|"week"|"month", duration, start_at, address_id}` → `POST /rentals` (same body) → vendor `POST /vendor/rentals/:id/action {action:"approve"}` → customer pays (`/payments/init {rental_id, purpose:"advance"|"balance"}`; `GET /rentals/:id` shows `amount_due`) → vendor `start` → customer `POST /rentals/:id/extend {duration}` → vendor `extension_approve` → `return {late_charge, damage_charge}` → `close` (refunds unused deposit).
 
 ## Uploads
 `POST /uploads` multipart `files[]` (max 10, `MAX_UPLOAD_MB`) → `{items:[{url,mime,size,name}]}`. Use returned `url` in product images, KYC docs, chat attachments.
@@ -119,10 +117,6 @@ Generated from the route files. `*` = vendor/admin/staff auth; admin endpoints a
 | POST | `/vendor/quotations/:id/revise` |
 | GET | `/vendor/quotations` |
 | POST | `/vendor/quotations/:id/proforma` |
-| GET | `/vendor/rentals` |
-| GET | `/vendor/rentals/calendar` |
-| GET | `/vendor/rentals/:id` |
-| POST | `/vendor/rentals/:id/action` |
 | GET | `/vendor/wallet` |
 | GET | `/vendor/wallet/ledger` |
 | GET | `/vendor/commissions` |
@@ -159,7 +153,6 @@ Generated from the route files. `*` = vendor/admin/staff auth; admin endpoints a
 | PATCH | `/admin/orders/:id` |
 | GET | `/admin/enquiries` |
 | GET | `/admin/quotations` |
-| GET | `/admin/rentals` |
 | GET | `/admin/commissions` |
 | GET | `/admin/payments` |
 | POST | `/admin/payments/manual` |
@@ -309,12 +302,6 @@ Generated from the route files. `*` = vendor/admin/staff auth; admin endpoints a
 | POST | `/quotations/:id/reject` |
 | POST | `/quotations/:id/revision` |
 | POST | `/quotations/:id/convert` |
-| POST | `/rentals/quote` |
-| POST | `/rentals` |
-| GET | `/rentals` |
-| GET | `/rentals/:id` |
-| POST | `/rentals/:id/extend` |
-| POST | `/rentals/:id/cancel` |
 
 ## Additions — Nov 2026 refinement (additive only; no existing endpoint changed shape)
 All paths are under `/api/v1`. Admin routes need an admin or staff token with the matching module permission.
@@ -323,7 +310,7 @@ All paths are under `/api/v1`. Admin routes need an admin or staff token with th
 |---|---|---|
 | GET | `/admin/product-vendors` | Seller list for the Add product form (admin can list on behalf of any approved vendor) |
 | POST | `/admin/products` | Admin creates a machine listing; **auto-approved** |
-| PUT | `/admin/products/:id` | Full edit (specs, images, pricing, rental, GST/HSN) |
+| PUT | `/admin/products/:id` | Full edit (specs, images, pricing, GST/HSN) |
 | DELETE | `/admin/products/:id` | Archive a listing |
 | POST | `/admin/products/import` | CSV bulk import |
 | GET | `/admin/products/:id/full` | Product plus images, specs and attributes for editing |
@@ -345,3 +332,6 @@ All paths are under `/api/v1`. Admin routes need an admin or staff token with th
 - TCS: GST s.52, setting `tcs_pct`, default 0.5%.
 - TDS: Income-tax s.194-O, setting `tds_pct`, default 0.1%.
 - Both are withheld from `vendor_net` and posted to the `platform:tcs_payable` and `platform:tds_payable` ledgers.
+
+
+> Rental endpoints (`/rentals*`, `/vendor/rentals*`, `/admin/rentals*`) are switched off and return 404 (set `ENABLE_RENTALS=1` to restore). Rental tables and data are kept.

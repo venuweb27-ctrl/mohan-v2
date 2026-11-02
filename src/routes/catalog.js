@@ -3,7 +3,7 @@ const { db, E, wrap, J, pageResult, paginate } = require('../core');
 
 const PSELECT = `SELECT p.*, v.business_name vendor_name, v.city vendor_city, v.state vendor_state, v.rating vendor_rating, v.rating_count vendor_rating_count, b.name brand_name, b.manufacturer, c.name category_name, sc.name subcategory_name
  FROM products p JOIN vendors v ON v.id=p.vendor_id LEFT JOIN brands b ON b.id=p.brand_id LEFT JOIN categories c ON c.id=p.category_id LEFT JOIN categories sc ON sc.id=p.subcategory_id`;
-const PUBLIC_WHERE = `p.status='approved' AND p.active=1 AND v.status='active'`;
+const PUBLIC_WHERE = `p.status='approved' AND p.active=1 AND v.status='active' AND p.purchase_available=1`; // rentals off: rental-only listings are hidden
 function shape(p, full = false) {
   if (!p) return p;
   const o = { ...p, images: J(p.images, []), videos: J(p.videos, []), specs: J(p.specs, {}), in_stock: p.stock > 0, rental_pricing: p.rental_available ? { hourly: p.rent_hourly, daily: p.rent_daily, weekly: p.rent_weekly, monthly: p.rent_monthly, security_deposit: p.security_deposit } : null };
@@ -32,7 +32,6 @@ function buildFilter(q, user) {
   if (q.vendor_id) { where.push('p.vendor_id=?'); params.push(+q.vendor_id); }
   if (q.in_stock === '1' || q.availability === 'in_stock') where.push('p.stock > 0');
   if (q.mode === 'purchase') where.push('p.purchase_available=1');
-  if (q.mode === 'rental') where.push('p.rental_available=1');
   if (q.featured === '1') where.push('p.featured=1');
   if (q.fuel_type) { where.push('p.fuel_type LIKE ?'); params.push(`%${q.fuel_type}%`); }
   if (q.year_min) { where.push('p.mfg_year >= ?'); params.push(+q.year_min); }
@@ -129,7 +128,7 @@ router.get('/home', wrap((req, res) => {
     featured: L('p.featured=1', 'p.promoted DESC, p.rating DESC'),
     popular: L('', '(p.views + p.sold*20) DESC'),
     recent: L('', 'p.created_at DESC, p.id DESC'),
-    rental: L('p.rental_available=1', 'p.rating DESC', 8),
+    rental: [], // rentals switched off; key kept for API compatibility
     recommended, recently_viewed, nearby,
     featured_vendors: db.all("SELECT id,business_name,city,state,rating,rating_count,logo FROM vendors WHERE status='active' AND featured=1 ORDER BY rating DESC LIMIT 10"),
     announcements: db.all("SELECT * FROM announcements WHERE active=1 AND audience IN ('all','customers') ORDER BY id DESC LIMIT 3"),

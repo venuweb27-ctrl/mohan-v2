@@ -6,6 +6,26 @@ const rateLimit = require('express-rate-limit');
 const { db, optionalAuth, ApiError } = require('./core');
 
 if (!db.one('SELECT COUNT(*) c FROM users').c && process.env.AUTO_SEED !== '0') require('./seed');
+// One-time fix: replace the old demo company/support placeholders with the real company details (only if still the demo values).
+try {
+  const REAL = { name: 'Mohan Mishra Multitrade Private Limited', gstin: '09AAHCM7149Q1ZK', pan: 'AAHCM7149Q', address: '23, Mainapur Rd, Mainapur, Ghaziabad, Uttar Pradesh 201017, India', state: 'Uttar Pradesh', state_code: '09', email: 'mohanmishra9999@gmail.com', phone: '+91 95222 24488', cin: 'U52100CT2011PTC000081' };
+  const row = db.one("SELECT value FROM settings WHERE key='company'"); const cur = row ? JSON.parse(row.value) : null;
+  if (!cur || cur.gstin === '27AABCM1234F1Z5') db.setSetting('company', { ...(cur || {}), ...REAL });
+  const srow = db.one("SELECT value FROM settings WHERE key='support'"); const sup = srow ? JSON.parse(srow.value) : null;
+  if (!sup || sup.email === 'support@mohanmishra.in') { const n = { ...(sup || {}), phone: REAL.phone, email: REAL.email }; delete n.whatsapp; db.setSetting('support', n); }
+} catch (e) { console.error('company settings migration skipped:', e.message); }
+// One-time cleanup of seeded rental wording (data kept; only demo text/visibility changed).
+try {
+  if (!db.setting('rentals_removed_v1', false)) {
+    db.run("UPDATE banners SET active=0 WHERE link LIKE '%mode=rental%'");
+    db.run("UPDATE faqs SET active=0 WHERE category='rental'");
+    db.run("UPDATE products SET description=REPLACE(description, ', also available on rent', '') WHERE description LIKE '%, also available on rent%'");
+    db.run("UPDATE categories SET description=REPLACE(description, ' — new, used and on rent.', ' — new and used.') WHERE description LIKE '% — new, used and on rent.'");
+    db.run("UPDATE cms_pages SET content=REPLACE(content, 'buy, rent or request quotes', 'buy or request quotes') WHERE content LIKE '%buy, rent or request quotes%'");
+    db.run("UPDATE vendors SET business_name='Deccan Earthmovers' WHERE business_name='Deccan Earthmovers & Rentals'");
+    db.setSetting('rentals_removed_v1', true);
+  }
+} catch (e) { console.error('rental cleanup skipped:', e.message); }
 
 const app = express();
 app.set('trust proxy', 1);
@@ -40,6 +60,9 @@ app.post('/api/v1/public/deletion-request', express.json({ limit: '16kb' }), (re
   const r = db.run('INSERT INTO deletion_requests (name,contact,reason,user_id,ip) VALUES (?,?,?,?,?)', name, contact, reason, u ? u.id : null, req.ip);
   res.status(201).json({ ok: true, id: Number(r.lastInsertRowid), message: 'Deletion request received' });
 });
+// Rentals are switched off (product decision, Nov 2026). Data and tables are kept; the API no longer exposes them.
+// Set ENABLE_RENTALS=1 to bring the endpoints back.
+if (process.env.ENABLE_RENTALS !== '1') app.use((req, res, next) => /^\/api\/v1\/(admin\/|vendor\/)?rentals(\/|\?|$)/.test(req.originalUrl) ? res.status(404).json({ error: { code: 'NOT_FOUND', message: 'No such endpoint' } }) : next());
 app.use('/api/v1', api);
 
 const UP = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');

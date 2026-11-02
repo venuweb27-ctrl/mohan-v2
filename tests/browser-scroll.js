@@ -20,7 +20,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const check = async (base, hash, name, vp) => {
     await pg.setViewport({ width: vp[0], height: vp[1], deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     await pg.goto(B + base + '#' + hash, { waitUntil: 'networkidle2' }); await sleep(800);
-    const w = `[${vp[0]}x${vp[1]}] ${base}#${hash}`; const s0 = await state();
+    const w = `[${vp[0]}x${vp[1]}] ${base}#${hash}`; const s0 = await state(); { const rt = (await pg.evaluate(() => document.body.innerText)).match(/.{0,30}\brent(al|als|ing)?\b.{0,20}/i); ok(!rt, `${w}: no rent/rental text` + (rt ? ' → ' + rt[0] : '')); }
     ok(s0.bodyOv === 'visible' || s0.panel, `${w}: <body> is not a nested scroll container (overflow-y ${s0.bodyOv})`);
     if (s0.max < 40) { ok(true, `${w}: fits on one screen (${s0.sh}px) — nothing to scroll`); return; }
     const sx = Math.round(vp[0] / 2), sy = Math.round(vp[1] * 0.6);

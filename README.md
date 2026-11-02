@@ -1,12 +1,12 @@
 # Mohan Mishra v2: Machinery & Industrial Equipment Marketplace (India)
 
-Multi-vendor B2B/B2C marketplace for buying, renting and getting quotes on machinery. GST-aware, priced in INR.
+Multi-vendor B2B/B2C marketplace for buying and getting quotes on machinery. GST-aware, priced in INR.
 A single Node service serves the REST API at `/api/v1` and one SPA with three areas:
 
 | Area | URL | For |
 |---|---|---|
-| Customer app | `/` | browse, search, cart, checkout, quotes, rentals, orders, invoices |
-| Vendor panel | `/vendor` | onboarding/KYC, products, inventory, orders, quotations, rentals, wallet, reports, staff, CRM |
+| Customer app | `/` | browse, search, cart, checkout, quotes, orders, invoices |
+| Vendor panel | `/vendor` | onboarding/KYC, products, inventory, orders, quotations, wallet, reports, staff, CRM |
 | Admin panel | `/admin` | users, vendor KYC, product review, orders, withdrawals, invoices, ledger, CMS, tickets, roles, settings, providers |
 
 No CDN: all assets are local, and the charts are drawn on `<canvas>`. The UI uses soft glassmorphism. On mobile it shows a 2-column grid and a floating cart pill; the panels use a denser layout.
