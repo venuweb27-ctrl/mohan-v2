@@ -15,7 +15,7 @@ function shell(inner, active = '') {
       <div><h4>Shop</h4><a href="#/categories">All categories</a><a href="#/search?featured=1">Featured machines</a><a href="#/enquire">Bulk / custom quote</a></div>
       <div><h4>Account</h4><a href="#/orders">My orders</a><a href="#/account">Profile & GSTIN</a><a href="#/support">Help & support</a><a href="#/faqs">FAQs</a><a href="/privacy">Privacy policy</a><a href="/terms">Terms of use</a><a href="/delete-account">Delete account</a></div>
       <div><h4>Company</h4><a href="#/page/about">About</a><a href="#/page/terms">Terms</a><a href="#/page/privacy">Privacy</a><a href="#/page/refund">Refunds & returns</a><a href="/vendor/">Sell on Mohan Mishra</a></div></div>
-      <div class="copy"><span>© ${new Date().getFullYear()} Mohan Mishra Industrial Marketplace</span><span>Made in India 🇮🇳 · Secure payments · Pan-India delivery</span></div></footer>`;
+      <div class="copy"><span>© ${new Date().getFullYear()} Mohan Mishra Industrial Marketplace</span><span>Made and Protected in United States of America 🇺🇸 · Secure payments · Pan-India delivery</span></div></footer>`;
   $('#sf').onsubmit = e => { e.preventDefault(); C.lastQ = $('#sq').value.trim(); go('#/search?q=' + encodeURIComponent(C.lastQ)); };
   let t; $('#sq').oninput = () => { clearTimeout(t); t = setTimeout(async () => { const q = $('#sq').value.trim(); if (q.length < 2) return; const d = await GET('/search/suggest?q=' + encodeURIComponent(q), { quiet: 1 }).catch(() => null); if (d) $('#sugg').innerHTML = [...(d.products || []), ...(d.categories || []), ...(d.brands || [])].map(x => `<option value="${esc(x.name)}">`).join(''); }, 200); };
   updateCartPill();
