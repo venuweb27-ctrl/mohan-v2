@@ -1,0 +1,43 @@
+// Landing / home page markup (brand palette). Shared by the app home route and the standalone preview build.
+const LP_ICONS = {
+  cnc: '<path d="M3 20h18M5 20V9h14v11M8 9V5h8v4M9 13h6v4H9z"/>', gen: '<rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 7V5h4v2M13 12l-2 3h3l-2 3M6 18v2M18 18v2"/>',
+  comp: '<circle cx="8" cy="14" r="5"/><path d="M13 14h6v-6h-4M8 11v3l2 2M17 8V5"/>', earth: '<path d="M2 18h12v-4l-3-4H5l-3 4zM14 14l4-7 3 2-2 5M5 21a2 2 0 1 0 0-.01M11 21a2 2 0 1 0 0-.01"/>',
+  tool: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>', pump: '<path d="M4 20h16M6 20V10h8v10M14 13h3a3 3 0 0 0 3-3V6M10 10V6h-3"/>',
+  weld: '<path d="M4 20l7-7M11 13l3 3 6-6-3-3zM5 8l2-2M3 12h2M8 3v2"/>', box: '<path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',
+  invoice: '<path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h6M9 17h6M9 9h2"/>', shield: '<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="m9 12 2 2 4-4"/>', lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+};
+const lpIc = (k, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LP_ICONS[k] || LP_ICONS.box}</svg>`;
+const lpCatIcon = n => { n = (n || '').toLowerCase(); return /cnc|lathe|machine tool|milling/.test(n) ? 'cnc' : /gen|power|dg/.test(n) ? 'gen' : /compress|air/.test(n) ? 'comp' : /earth|excav|construct|jcb|crane/.test(n) ? 'earth' : /pump|water/.test(n) ? 'pump' : /weld/.test(n) ? 'weld' : /tool|drill|hand/.test(n) ? 'tool' : 'box'; };
+const LP_ART = `<svg viewBox="0 0 400 300" role="img" aria-label="Industrial machinery illustration"><defs><linearGradient id="lpg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8EEF6"/><stop offset="1" stop-color="#F8FAFC"/></linearGradient></defs>
+<rect width="400" height="300" fill="url(#lpg)"/><rect y="236" width="400" height="64" fill="#DCE5F0"/>
+<g transform="translate(26 120)"><rect x="0" y="40" width="150" height="76" rx="10" fill="#123B65"/><rect x="12" y="52" width="70" height="40" rx="6" fill="#1E5A94"/><g fill="#F59E0B"><rect x="92" y="54" width="44" height="6" rx="3"/><rect x="92" y="66" width="44" height="6" rx="3"/><rect x="92" y="78" width="30" height="6" rx="3"/></g><rect x="40" y="18" width="44" height="22" rx="4" fill="#1F2937"/><rect x="8" y="116" width="18" height="10" fill="#1F2937"/><rect x="124" y="116" width="18" height="10" fill="#1F2937"/><circle cx="47" cy="72" r="12" fill="#F59E0B"/><path d="M44 66l-3 7h5l-3 7" stroke="#123B65" stroke-width="2.5" fill="none"/></g>
+<g transform="translate(196 70)"><path d="M10 166h150v-40l-30-34H40l-30 34z" fill="#F59E0B"/><rect x="50" y="98" width="46" height="34" rx="4" fill="#123B65" opacity=".9"/><path d="M130 100l60-70 22 14-48 66" stroke="#1F2937" stroke-width="14" stroke-linecap="round" fill="none"/><path d="M200 34l14 40-30 6z" fill="#1F2937"/><rect x="4" y="166" width="164" height="22" rx="11" fill="#1F2937"/><g fill="#94A3B8"><circle cx="24" cy="177" r="6"/><circle cx="64" cy="177" r="6"/><circle cx="104" cy="177" r="6"/><circle cx="148" cy="177" r="6"/></g></g>
+<g transform="translate(330 40)" fill="none" stroke="#16A34A" stroke-width="5"><circle r="22"/><path d="M0-32v10M0 22v10M-32 0h10M22 0h10M-23-23l7 7M16 16l7 7M-23 23l7-7M16-16l7-7"/></g></svg>`;
+function lpHTML(o) {
+  const c = o.company || {}; const logo = o.logo || '/assets/brand/logo-rounded.png';
+  const cats = (o.categories || []).slice(0, 8).map(k => `<a class="lp-cat" href="${k.href}"><span class="ico">${k.image ? `<img src="${k.image}" alt="" loading="lazy">` : lpIc(lpCatIcon(k.name), 26)}</span><span><b>${k.name}</b>${k.sub ? `<span>${k.sub}</span>` : ''}</span></a>`).join('');
+  return `<div class="lp">
+  ${o.announcement || ''}
+  <section class="lp-hero" aria-label="Welcome"><div style="position:relative;z-index:1">
+    <div class="lp-brand"><img src="${logo}" alt="Mohan Mishra logo">Mohan Mishra · Machinery Marketplace</div>
+    <h1>Industrial machinery,<br><em>delivered pan-India.</em></h1>
+    <p class="lead">Buy CNC machines, gensets, compressors, earthmovers and tools from verified sellers, with a GST tax invoice on every order.</p>
+    <form class="lp-search" id="lpsearch" role="search"><input name="q" placeholder="Search CNC, gensets, compressors…" aria-label="Search machinery"><button class="lp-btn o" type="submit">Search</button></form>
+    <div class="lp-cta"><a class="lp-btn o" href="${o.shopHref || '#/search'}">Shop machinery</a><a class="lp-btn ol" href="${o.quoteHref || '#/enquire'}">Get bulk quote</a></div>
+    <div class="lp-stats"><div><b>${o.stats?.products || '500+'}</b><span>Machines listed</span></div><div><b>${o.stats?.vendors || '100+'}</b><span>Verified vendors</span></div><div><b>28</b><span>States served</span></div></div></div>
+    <div class="lp-visual"><div class="lp-card">${LP_ART}</div><div class="lp-chipfloat" style="left:-18px;top:18px"><i></i>GST invoice included</div><div class="lp-chipfloat" style="right:-8px;bottom:22px">🚚 Freight & installation</div></div>
+  </section>
+  <section class="lp-trust" aria-label="Why buy with us"><div><span class="ti">${lpIc('invoice')}</span><span><b>GST tax invoice</b><span>Claim input tax credit on every order</span></span></div><div><span class="ti">${lpIc('shield')}</span><span><b>Verified vendors</b><span>KYC, GSTIN and bank checked</span></span></div><div><span class="ti">${lpIc('lock')}</span><span><b>Secure payment</b><span>Full, advance or partial: UPI, cards, net banking</span></span></div></section>
+  <section aria-labelledby="lpcat"><div class="lp-sec-h"><div><h2 id="lpcat">Shop by category</h2><p>Machines for every workshop, site and factory</p></div><a class="lp-link" href="${o.catsHref || '#/categories'}">All categories ›</a></div><div class="lp-cats">${cats}</div></section>
+  <section aria-labelledby="lpfeat"><div class="lp-sec-h"><div><h2 id="lpfeat">Featured machines</h2><p>Hand-picked by our team this week</p></div><a class="lp-link" href="${o.featHref || '#/search?featured=1'}">See all ›</a></div>${o.featuredHTML || ''}</section>
+  ${o.middle || ''}
+  <section aria-labelledby="lphow"><div class="lp-sec-h"><div><h2 id="lphow">How it works</h2><p>From search to installation in three steps</p></div></div><div class="lp-steps"><div class="lp-step"><b>Find or request</b><span>Browse verified listings or post one requirement and get quotes from several sellers.</span></div><div class="lp-step"><b>Pay securely</b><span>Pay in full, pay an advance, or pay in parts. You get a GST tax invoice instantly.</span></div><div class="lp-step"><b>Delivered & installed</b><span>Track freight to your site, with optional installation and after-sales support.</span></div></div></section>
+  <section class="lp-vendor" aria-labelledby="lpvend"><div><h2 id="lpvend">Sell your machinery across India</h2><p>Join verified vendors reaching buyers in 28 states. List products, receive orders and quotations, and get settlements to your bank.</p><div class="lp-cta"><a class="lp-btn n" href="${o.vendorHref || '/vendor/'}">Become a vendor</a><a class="lp-btn g" href="${o.waHref || 'https://wa.me/919522224488'}" target="_blank" rel="noopener">Talk on WhatsApp</a></div></div>
+    <ul><li>Free onboarding & KYC</li><li>Seller dashboard & GST invoices</li><li>Weekly settlements</li><li>Chat directly with buyers</li></ul></section>
+  <footer class="lp-foot"><div class="co"><img src="${logo}" alt=""><div><h4 style="margin-bottom:4px">${c.name || 'Mohan Mishra Multitrade Private Limited'}</h4><p>${c.address || ''}</p><small>GSTIN ${c.gstin || ''}${c.cin ? ` · CIN ${c.cin}` : ''}</small></div></div>
+    <div><h4>Contact</h4><ul><li><a href="tel:${(c.phone || '').replace(/\s/g, '')}">${c.phone || ''}</a></li><li><a href="mailto:${c.email || ''}">${c.email || ''}</a></li><li><a href="${o.waHref || 'https://wa.me/919522224488'}" target="_blank" rel="noopener">WhatsApp us</a></li></ul></div>
+    <div><h4>Company</h4><ul><li><a href="${o.page ? o.page('about') : '#/page/about'}">About us</a></li><li><a href="${o.page ? o.page('terms') : '#/page/terms'}">Terms</a></li><li><a href="${o.page ? o.page('privacy') : '#/page/privacy'}">Privacy</a></li><li><a href="${o.page ? o.page('refund') : '#/page/refund'}">Refunds & returns</a></li></ul></div>
+    <div class="legal"><span>© ${new Date().getFullYear()} ${c.name || 'Mohan Mishra Multitrade Private Limited'}</span><span>Prices include GST where shown · Jurisdiction: Ghaziabad</span></div></footer>
+</div>`;
+}
+if (typeof module !== 'undefined') module.exports = { lpHTML, lpIc };

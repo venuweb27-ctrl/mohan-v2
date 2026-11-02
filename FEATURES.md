@@ -158,3 +158,7 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 - M3 chat UI with bubbles, day separators, seen ticks, and image attachments (max 5 MB). Unread badges in the customer header and Account tab, and in the vendor/admin header; a "Messages" entry in the panel nav. Updates arrive by 5 s polling.
 - Rate limit, max length, and role checks. FCM push hook is present but disabled (`CHAT_PUSH=1` turns it on).
 - "Chat on WhatsApp" (+91 95222 24488) on product pages (prefilled with the product name and link) and on Messages.
+
+## Landing page redesign (brand palette)
+- The home page uses navy #123B65, orange #F59E0B, soft white #F8FAFC, charcoal #1F2937 and green #16A34A, with M3 sections: a hero with search and CTAs, a trust strip (GST invoice, verified vendors, secure payment), category tiles, featured machines, how it works, a vendor CTA with WhatsApp, and a company footer. Markup lives in `web/js/landing.js`.
+- Live data still comes from `/home` (categories, featured, top sellers, recommended, recently viewed, new arrivals, verified sellers).

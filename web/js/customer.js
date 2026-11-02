@@ -36,27 +36,23 @@ C.add = async (id, qty = 1) => { if (needLogin()) return; await POST('/cart/item
 const grid = items => items?.length ? `<div class="grid">${items.map(card).join('')}</div>` : '<div class="empty card">No machines found.</div>';
 
 on('customer', '/', async () => {
-  shell('<div class="skeleton" style="height:260px"></div><div class="skeleton mt"></div>', 'Home'); const h = await GET('/home');
-  const sec = (t, items, link) => items?.length ? `<div class="sec"><h2>${t}</h2>${link ? `<a class="pill" href="${link}">See all ›</a>` : ''}</div>${grid(items.slice(0, 8))}` : '';
-  const slides = (h.banners || []).filter(b => b.image);
-  $('#main').innerHTML = `${h.announcements?.length ? `<div class="alert info" style="margin-bottom:12px">📢 <b>${esc(h.announcements[0].title)}</b> <span>${esc(h.announcements[0].body)}</span></div>` : ''}
-   <section class="hero"><div><span class="kicker">India's machinery marketplace</span><h1 id="htitle">${esc(slides[0]?.title || 'Industrial machinery, delivered pan-India')}</h1><p id="hsub">${esc(slides[0]?.subtitle || 'Buy CNC machines, gensets, compressors, earthmovers & tools from verified sellers — with GST tax invoices.')}</p>
-     <div class="hcta"><a class="btn amber lg" href="#/search">Shop machinery</a><a class="btn ghost lg hide-m" href="#/enquire">Get bulk quote</a></div>
-     <div class="hstats"><div><b>${h.stats?.products || (h.featured?.length ? h.featured.length * 25 + '+' : '500+')}</b><span>Machines listed</span></div><div><b>${h.featured_vendors?.length ? h.featured_vendors.length * 10 + '+' : '100+'}</b><span>Verified vendors</span></div><div><b>28</b><span>States served</span></div></div></div>
-     <div class="slides">${slides.map((b, i) => `<img src="${esc(b.image)}" alt="${esc(b.title)}" class="${i ? '' : 'on'}" onclick="location.href='${esc(b.link || '#/search')}'">`).join('')}<div class="dots">${slides.map((b, i) => `<i data-i="${i}" class="${i ? '' : 'on'}"></i>`).join('')}</div></div></section>
-   <div class="trust"><div><i>🧾</i><div><b>GST tax invoice</b><span>Claim input tax credit</span></div></div><div><i>✅</i><div><b>Verified vendors</b><span>KYC & GSTIN checked</span></div></div><div><i>🔒</i><div><b>Secure payments</b><span>Full, advance or partial</span></div></div><div><i>🚚</i><div><b>Pan-India delivery</b><span>Freight & installation</span></div></div></div>
-   <div class="sec"><h2>Shop by category</h2><a class="pill" href="#/categories">All ›</a></div>
-   <div class="chips">${h.categories.map(c => `<div class="glass cat" onclick="go('#/search?category_id=${c.id}')">${img(c.image || c.icon, c.name)}${esc(c.name)}</div>`).join('')}</div>
-   ${sec('Featured machines', h.featured, '#/search?featured=1')}
-   <div class="promo"><div><b>🎉 New buyer? Use WELCOME5</b><div class="small">Extra 5% off your first machinery order. GST invoice included.</div></div><a class="btn navy" href="#/search">Start shopping</a></div>
-   ${sec('Top sellers', h.popular, '#/search?sort=popular')}
-   <div class="promo dark"><div><b>Need a custom machine or bulk quote?</b><div class="small"><span>Send one requirement, get quotations from multiple verified vendors.</span></div></div><a class="btn amber" href="#/enquire">Request quotation</a></div>
-   ${sec('Recommended for you', h.recommended)}${sec('Recently viewed', h.recently_viewed)}${sec('New arrivals', h.recent, '#/search?sort=newest')}
-   ${h.featured_vendors?.length ? `<div class="sec"><h2>Verified sellers</h2></div><div class="chips">${h.featured_vendors.map(v => `<a class="glass cat" style="min-width:170px" href="#/vendor-store/${v.id}">${img(v.logo || '/assets/brand/logo-rounded.png')}<b>${esc(v.business_name)}</b><span class="muted">${esc(v.city)}</span>${stars(v.rating, v.rating_count)}</a>`).join('')}</div>` : ''}`;
-  let i = 0; const show = n => { i = n; $$('.hero .slides img').forEach((x, k) => x.classList.toggle('on', k === i)); $$('.hero .dots i').forEach((x, k) => x.classList.toggle('on', k === i)); if (slides[i]) { $('#htitle').textContent = slides[i].title; $('#hsub').textContent = slides[i].subtitle || ''; } };
-  $$('.hero .dots i').forEach(d => d.onclick = () => show(+d.dataset.i));
-  clearInterval(C.heroT); if (slides.length > 1) C.heroT = setInterval(() => { if (!$('.hero')) return clearInterval(C.heroT); show((i + 1) % slides.length); }, 5000);
+  shell('<div class="skeleton" style="height:260px"></div><div class="skeleton mt"></div>', 'Home'); const h = await GET('/home'); document.body.classList.add('lp-home');
+  const sec = (t, items, link) => items?.length ? `<section><div class="lp-sec-h"><h2>${t}</h2>${link ? `<a class="lp-link" href="${link}">See all ›</a>` : ''}</div>${grid(items.slice(0, 8))}</section>` : '';
+  const co = S.config?.company || {};
+  $('#main').innerHTML = lpHTML({
+    announcement: h.announcements?.length ? `<div class="alert info">📢 <b>${esc(h.announcements[0].title)}</b> <span>${esc(h.announcements[0].body)}</span></div>` : '',
+    stats: { products: h.stats?.products || (h.featured?.length ? h.featured.length * 25 + '+' : '500+'), vendors: h.featured_vendors?.length ? h.featured_vendors.length * 10 + '+' : '100+' },
+    categories: (h.categories || []).map(c => ({ name: esc(c.name), href: `#/search?category_id=${c.id}`, image: c.image ? esc(c.image) : '', sub: c.product_count ? `${c.product_count} machines` : '' })),
+    featuredHTML: h.featured?.length ? grid(h.featured.slice(0, 8)) : '<p class="muted">New machines are being added. <a href="#/search">Browse all</a></p>',
+    middle: `<div class="promo"><div><b>🎉 New buyer? Use WELCOME5</b><div class="small">Extra 5% off your first machinery order. GST invoice included.</div></div><a class="btn navy" href="#/search">Start shopping</a></div>
+      ${sec('Top sellers', h.popular, '#/search?sort=popular')}${sec('Recommended for you', h.recommended)}${sec('Recently viewed', h.recently_viewed)}${sec('New arrivals', h.recent, '#/search?sort=newest')}
+      ${h.featured_vendors?.length ? `<section><div class="lp-sec-h"><h2>Verified sellers</h2></div><div class="chips">${h.featured_vendors.map(v => `<a class="glass cat" style="min-width:170px" href="#/vendor-store/${v.id}">${img(v.logo || '/assets/brand/logo-rounded.png')}<b>${esc(v.business_name)}</b><span class="muted">${esc(v.city)}</span>${stars(v.rating, v.rating_count)}</a>`).join('')}</div></section>` : ''}`,
+    company: { name: esc(co.name || ''), address: esc(co.address || ''), gstin: esc(co.gstin || ''), cin: esc(co.cin || ''), phone: esc(co.phone || '+91 95222 24488'), email: esc(co.email || '') },
+    waHref: typeof waLink === 'function' ? waLink('Hi Mohan Mishra, I would like to know more.') : 'https://wa.me/919522224488'
+  });
+  $('#lpsearch').onsubmit = e => { e.preventDefault(); const q = e.target.q.value.trim(); go('#/search' + (q ? '?q=' + encodeURIComponent(q) : '')); };
 });
+window.addEventListener('hashchange', () => { if (!/^#\/?$/.test(location.hash)) document.body.classList.remove('lp-home'); });
 on('customer', '/categories', async () => { shell('', 'Categories'); const cats = await GET('/categories'); const list = cats.items || cats;
   $('#main').innerHTML = `<h1>Categories</h1><div class="grid">${list.filter(c => !c.parent_id).map(c => `<div class="glass card"><div class="row">${img(c.image || c.icon)}<h3><a href="#/search?category_id=${c.id}">${esc(c.name)}</a></h3></div><div class="row mt">${(c.children || list.filter(x => x.parent_id === c.id)).map(s => `<a class="pill" href="#/search?category_id=${s.id}">${esc(s.name)}</a>`).join('')}</div></div>`).join('')}</div>`; });
 on('customer', '/search', async q => {
