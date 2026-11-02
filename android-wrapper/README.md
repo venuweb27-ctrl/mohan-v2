@@ -1,6 +1,6 @@
 # Mohan Mishra — Android wrapper (WebView shell for the PWA)
 
-A small, dependency-free Java app (package `in.mohanmishra.app`) that opens the mobile-first web app full-screen. One codebase: the same site works in the browser, installs as a PWA, and ships to Play through this wrapper.
+A small, dependency-free Java app (package `com.app.mmpl`) that opens the mobile-first web app full-screen. One codebase: the same site works in the browser, installs as a PWA, and ships to Play through this wrapper.
 
 - **URL:** set by the Gradle property `appUrl`. The default (in `gradle.properties`) is `https://mohanmishra-v2.onrender.com/`.
   - Override it per build: `./gradlew assembleRelease -PappUrl=https://shop.example.in/`.

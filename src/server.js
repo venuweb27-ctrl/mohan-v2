@@ -31,15 +31,27 @@ api.use('/', require('./routes/payments'));
 api.use('/', require('./routes/common'));
 api.use('/', require('./routes/customer'));
 api.use((req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'No such endpoint' } }));
+// Public account-deletion request intake (Play Store requirement; additive)
+db.run(`CREATE TABLE IF NOT EXISTS deletion_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, contact TEXT NOT NULL, reason TEXT, user_id INTEGER, ip TEXT, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT CURRENT_TIMESTAMP)`);
+app.post('/api/v1/public/deletion-request', express.json({ limit: '16kb' }), (req, res) => {
+  const name = String(req.body?.name || '').trim().slice(0, 120), contact = String(req.body?.contact || '').trim().slice(0, 160), reason = String(req.body?.reason || '').trim().slice(0, 1000);
+  if (!contact || contact.length < 5) return res.status(400).json({ error: { code: 'VALIDATION', message: 'Enter your registered mobile number or email' } });
+  const u = db.one('SELECT id FROM users WHERE lower(email)=lower(?) OR mobile=? OR mobile=?', contact, contact, contact.replace(/\D/g, '').slice(-10));
+  const r = db.run('INSERT INTO deletion_requests (name,contact,reason,user_id,ip) VALUES (?,?,?,?,?)', name, contact, reason, u ? u.id : null, req.ip);
+  res.status(201).json({ ok: true, id: Number(r.lastInsertRowid), message: 'Deletion request received' });
+});
 app.use('/api/v1', api);
 
 const UP = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 app.use('/uploads', express.static(UP, { maxAge: '7d' }));
 const WEB = path.join(__dirname, '..', 'web');
 app.use(express.static(WEB, { index: false, maxAge: '1h', setHeaders: (res, p) => { if (/\.(js|css|html|webmanifest)$/.test(p)) res.setHeader('Cache-Control', 'no-cache'); } }));
-// Android TWA / app-links verification. Configure ANDROID_PACKAGE and ANDROID_SHA256 (comma-separated fingerprints).
-app.get('/.well-known/assetlinks.json', (req, res) => { const fp = String(process.env.ANDROID_SHA256 || '').split(',').map(s => s.trim()).filter(Boolean); res.json(fp.length ? [{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: process.env.ANDROID_PACKAGE || 'in.mohanmishra.app', sha256_cert_fingerprints: fp } }] : []); });
+// Android app-links verification. Defaults: package com.app.mmpl; Play App Signing cert + upload-key cert (sideload builds).
+// Override with ANDROID_PACKAGE / ANDROID_SHA256 (comma-separated fingerprints).
+app.get('/.well-known/assetlinks.json', (req, res) => { const fp = String(process.env.ANDROID_SHA256 || '68:D0:66:C1:D3:E9:30:1D:32:4D:F5:74:2B:5E:0C:DC:24:D3:3B:50:85:6B:32:35:10:BD:58:33:62:43:59:47,F0:EF:2B:C3:AA:5B:22:03:E1:80:39:D7:E9:EA:3E:71:0C:CC:85:2C:D2:86:31:F1:36:88:28:36:D6:BD:26:53').split(',').map(s => s.trim()).filter(Boolean); res.json(fp.length ? [{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: process.env.ANDROID_PACKAGE || 'com.app.mmpl', sha256_cert_fingerprints: fp } }] : []); });
 app.get('/sw.js', (req, res) => { res.setHeader('Service-Worker-Allowed', '/'); res.setHeader('Cache-Control', 'no-cache'); res.sendFile(path.join(WEB, 'sw.js')); });
+// Legal pages (Play Store listing: privacy policy, terms, account deletion) + public deletion-request intake (additive).
+for (const [u, f] of [['/privacy', 'privacy.html'], ['/terms', 'terms.html'], ['/delete-account', 'delete-account.html']]) app.get(u, (req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile(path.join(WEB, f)); });
 const spa = (req, res) => res.sendFile(path.join(WEB, 'index.html'));
 app.get(['/', '/vendor', '/vendor/*', '/admin', '/admin/*'], spa);
 

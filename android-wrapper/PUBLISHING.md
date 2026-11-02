@@ -23,7 +23,7 @@ Use your final custom domain if you have one. The URL and App Link host are bake
 
 ## 3. Digital Asset Links (verified links: open site links in the app)
 The server serves `/.well-known/assetlinks.json` from env vars:
-- `ANDROID_PACKAGE` (default `in.mohanmishra.app`)
+- `ANDROID_PACKAGE` (default `com.app.mmpl`)
 - `ANDROID_SHA256`: comma-separated SHA-256 cert fingerprints
 
 Set `ANDROID_SHA256` to **both** fingerprints:
@@ -31,7 +31,7 @@ Set `ANDROID_SHA256` to **both** fingerprints:
 - **Upload key**: `keytool -list -v -keystore mohanmishra-upload.jks -alias upload`
 
 On Render, add both as environment variables and redeploy. Then check `https://<domain>/.well-known/assetlinks.json`, and test with:
-`adb shell pm verify-app-links --re-verify in.mohanmishra.app`
+`adb shell pm verify-app-links --re-verify com.app.mmpl`
 
 ## 4. Play Console
 1. Create the app: name "Mohan Mishra", default language English (India), App, Free.
@@ -57,3 +57,19 @@ On Render, add both as environment variables and redeploy. Then check `https://<
 
 ## Alternative: Trusted Web Activity
 The PWA already passes installability: a manifest, a service worker and maskable icons. You can also generate a TWA with Bubblewrap (`npx @bubblewrap/cli init --manifest https://<domain>/manifest.webmanifest`) and reuse the same package name and assetlinks. This wrapper was chosen because it builds offline, has no Chrome dependency, and handles UPI/tel intents.
+
+## Play Store update — com.app.mmpl v2.0.0 (versionCode 100)
+
+- **Package:** `com.app.mmpl` (replaces the old `in.mohanmishra.app`; it must match the live Play listing).
+- **Version:** `appVersionCode` / `appVersionName` in `gradle.properties` (or `-PappVersionCode=101`). Increase the versionCode for every upload.
+- **Site URL:** `appUrl` in `gradle.properties` is the single setting. It feeds `BuildConfig.APP_URL` and the app-link hosts (host `store.mohanmishra.app`). The default is `https://store.mohanmishra.app/`; while the domain isn't live yet, build with `-PappUrl=https://mohanmishra-v2.onrender.com/`.
+- **SDK:** compileSdk/targetSdk 35 (Play requirement), minSdk 24.
+- **Signing (upload key):** never commit secrets. Export the following, then run `gradle bundleRelease assembleRelease`:
+  - `MM_KEYSTORE=/path/upload.jks`
+  - `MM_KEY_ALIAS=upload`
+  - `MM_STORE_PASSWORD=…`
+  - `MM_KEY_PASSWORD=…`
+  - Upload certificate SHA-256: `F0:EF:2B:C3:AA:5B:22:03:E1:80:39:D7:E9:EA:3E:71:0C:CC:85:2C:D2:86:31:F1:36:88:28:36:D6:BD:26:53`
+- **Play App Signing certificate SHA-256** (the key Google re-signs with; this is what installed Play builds carry): `68:D0:66:C1:D3:E9:30:1D:32:4D:F5:74:2B:5E:0C:DC:24:D3:3B:50:85:6B:32:35:10:BD:58:33:62:43:59:47`
+- **App links:** the backend serves `/.well-known/assetlinks.json` for `com.app.mmpl` with both fingerprints above by default (Play-signed and sideloaded upload-signed builds). Override with the env vars `ANDROID_PACKAGE` / `ANDROID_SHA256` (comma-separated). After install, re-check with `adb shell pm verify-app-links --re-verify com.app.mmpl`.
+- **Store listing:** privacy policy `https://store.mohanmishra.app/privacy`, terms `/terms`, account deletion `/delete-account`. In-app: Account → Request account deletion.

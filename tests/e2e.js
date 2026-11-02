@@ -216,6 +216,15 @@ async function main() {
   step('Support');
   must(await call('POST', '/tickets', { subject: 'Need installation help', message: 'Please call', category: 'order' }, C), 'ticket created', [201]);
   const notes = must(await call('GET', '/notifications', undefined, C), 'notifications'); ok(notes.items.length > 3, 'customer has notifications');
+
+  step('Play Store: legal pages, deletion requests, app links');
+  for (const u of ['/privacy', '/terms', '/delete-account']) { const r = await fetch(BASE + u); const t = await r.text(); ok(r.status === 200 && /Mohan Mishra Multitrade Private Limited/.test(t), `${u} page served`); }
+  ok(/enterprisesconsolemohanmishra@gmail\.com/.test(await (await fetch(BASE + '/privacy')).text()), 'privacy policy has deletion contact email');
+  const dr = must(await call('POST', '/public/deletion-request', { name: 'Rahul', contact: 'rahul@example.com', reason: 'test' }), 'public deletion request', [201]); ok(dr.id > 0, 'deletion request recorded');
+  ok((await call('POST', '/public/deletion-request', {})).status === 400, 'deletion request needs contact');
+  const al = await (await fetch(BASE + '/.well-known/assetlinks.json')).json(); const fps = al[0]?.target?.sha256_cert_fingerprints || [];
+  ok(al[0]?.target?.package_name === 'com.app.mmpl', 'assetlinks package com.app.mmpl');
+  ok(fps.includes('68:D0:66:C1:D3:E9:30:1D:32:4D:F5:74:2B:5E:0C:DC:24:D3:3B:50:85:6B:32:35:10:BD:58:33:62:43:59:47') && fps.some(f => f.startsWith('F0:EF:2B')), 'assetlinks has Play signing + upload certs');
 }
 main().catch(e => { if (!String(e.message).startsWith('Abort')) { fail++; failures.push(e.message); console.error(e); } })
   .finally(() => { console.log(`\n${pass} passed, ${fail} failed`); if (failures.length) console.log('Failures:', failures); srv?.kill(); process.exit(fail ? 1 : 0); });
