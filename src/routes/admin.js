@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, E, wrap, J, v, auth, perm, pageResult, seqNo, rid, notify, audit, round2, post, ACC, balance, MODULES, publicUser, vendorUserId, gstSplit } = require('../core');
+const { pwPolicy, genPassword, db, E, wrap, J, v, auth, perm, pageResult, seqNo, rid, notify, audit, round2, post, ACC, balance, MODULES, publicUser, vendorUserId, gstSplit } = require('../core');
 const svc = require('../services');
 const providers = require('../providers');
 const { toCsv } = require('./vendor');
@@ -203,6 +203,19 @@ router.get('/reports/:kind', perm('reports', 'read'), wrap((req, res) => {
 router.get('/roles', perm('staff', 'read'), (req, res) => res.json({ modules: MODULES, levels: ['none', 'read', 'write', 'approve'], items: db.all('SELECT * FROM staff_roles ORDER BY id').map(r => ({ ...r, permissions: J(r.permissions, {}) })) }));
 router.post('/roles', perm('staff', 'approve'), wrap((req, res) => { const b = v(req.body, { name: 'string|required|max:60', permissions: 'json|required' }); const id = db.insert('staff_roles', b); audit(req, 'role.create', 'staff_role', id, b); res.status(201).json(db.one('SELECT * FROM staff_roles WHERE id=?', id)); }));
 router.patch('/roles/:id', perm('staff', 'approve'), wrap((req, res) => { const b = v(req.body, { name: 'string|max:60', permissions: 'json' }); db.update('staff_roles', req.params.id, b); audit(req, 'role.update', 'staff_role', req.params.id, b); res.json({ ok: true }); }));
+// Super-admin password management (set or generate for staff, vendors, customers). Plaintext returned once, never stored or logged.
+router.post('/users/:id/password', wrap((req, res) => {
+  if (req.user.role !== 'admin') throw E.forbid('Only the super admin can reset passwords');
+  const u = db.one('SELECT id, role, name, email, mobile FROM users WHERE id=?', +req.params.id); if (!u) throw E.notFound('User not found');
+  if (u.role === 'admin') throw E.forbid(u.id === req.user.id ? 'Use Change my password for your own account' : 'Super admin passwords cannot be reset here');
+  const generated = req.body?.generate === true || req.body?.generate === 'true' || req.body?.generate === 1;
+  let pw;
+  if (generated) pw = genPassword(); else { pw = String(req.body?.password || ''); const pe = pwPolicy(pw); if (pe) throw E.bad(pe); }
+  db.run('UPDATE users SET password_hash=? WHERE id=?', bcrypt.hashSync(pw, 10), u.id);
+  const rv = db.run('UPDATE sessions SET revoked=1 WHERE user_id=? AND revoked=0', u.id);
+  audit(req, generated ? 'password_generated' : 'password_set', 'user', u.id, { target_role: u.role, sessions_revoked: rv.changes });
+  res.json({ ok: true, user: { id: u.id, name: u.name, email: u.email, mobile: u.mobile, role: u.role }, generated, sessions_revoked: rv.changes, ...(generated ? { password: pw } : {}) });
+}));
 router.get('/staff', perm('staff', 'read'), (req, res) => res.json({ items: db.all("SELECT u.id,u.name,u.email,u.mobile,u.role,u.status,u.staff_role_id,r.name role_name,u.created_at FROM users u LEFT JOIN staff_roles r ON r.id=u.staff_role_id WHERE u.role IN ('admin','staff') ORDER BY u.id") }));
 router.post('/staff', perm('staff', 'approve'), wrap((req, res) => { const b = v(req.body, { name: 'string|required', email: 'email|required', mobile: 'mobile', password: 'string|required', staff_role_id: 'int|required' }); if (b.password.length < 8) throw E.bad('Password min 8 chars'); if (db.one('SELECT id FROM users WHERE email=?', b.email)) throw E.conflict('Email exists'); const id = db.insert('users', { role: 'staff', name: b.name, email: b.email, mobile: b.mobile, password_hash: bcrypt.hashSync(b.password, 10), staff_role_id: b.staff_role_id, email_verified: 1, created_by: req.user.id }); audit(req, 'staff.create', 'user', id); res.status(201).json({ id }); }));
 router.patch('/staff/:id', perm('staff', 'approve'), wrap((req, res) => { const b = v(req.body, { staff_role_id: 'int', status: 'enum|in:active,blocked', name: 'string' }); const u = db.one("SELECT * FROM users WHERE id=? AND role='staff'", req.params.id); if (!u) throw E.notFound(); db.update('users', u.id, b); if (b.status === 'blocked') db.run('UPDATE sessions SET revoked=1 WHERE user_id=?', u.id); audit(req, 'staff.update', 'user', u.id, b); res.json({ ok: true }); }));

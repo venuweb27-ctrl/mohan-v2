@@ -131,6 +131,14 @@ function post(lines, ref_type, ref_id, narration) {
 const balance = (account) => round2(db.one('SELECT COALESCE(SUM(credit-debit),0) b FROM ledger_entries WHERE account=?', account).b);
 const ACC = { avail: id => `vendor:${id}:available`, hold: id => `vendor:${id}:onhold`, escrow: 'platform:escrow', clearing: 'gateway:clearing', commission: 'platform:commission', gst: 'platform:gst_payable', fees: 'platform:gateway_fees', bank: 'platform:bank', tcs: 'platform:tcs_payable', tds: 'platform:tds_payable', deposits: 'platform:security_deposits', platformFee: 'platform:fees_income' };
 
+// ---------- password policy ----------
+function pwPolicy(pw) { pw = String(pw || ''); if (pw.length < 8 || pw.length > 100) return 'Password must be 8-100 characters'; if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Password must contain at least one letter and one digit'; return null; }
+function genPassword() {
+  const crypto = require('crypto'); const L = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', D = '23456789', Y = '!@#$%^&*-_=+?', A = L + D + Y;
+  const pick = s => { const lim = 256 - (256 % s.length); for (;;) { const b = crypto.randomBytes(1)[0]; if (b < lim) return s[b % s.length]; } };
+  const len = 12 + (crypto.randomBytes(1)[0] % 3); const c = [pick(L), pick(L), pick(D), pick(D), pick(Y)]; while (c.length < len) c.push(pick(A));
+  for (let i = c.length - 1; i > 0; i--) { const j = crypto.randomBytes(1)[0] % (i + 1); [c[i], c[j]] = [c[j], c[i]]; } return c.join('');
+}
 // ---------- notifications / audit ----------
 let pushAdapter = null;
 function notify(user_id, type, title, body, data) {
@@ -145,4 +153,4 @@ function audit(req, action, entity, entity_id, meta) {
 }
 const publicUser = u => { if (!u) return u; const { password_hash, ...r } = u; r.notif_prefs = J(r.notif_prefs, {}); return r; };
 
-module.exports = { db, JWT_SECRET, MODULES, LEVEL, ApiError, E, wrap, round2, J, now, rid, seqNo, signToken, loadUser, optionalAuth, auth, perm, vendorOnly, activeVendor, v, paginate, pageResult, STATES, stateCodeOf, gstSplit, fyOf, nextNumber, post, balance, ACC, notify, notifyAdmins, vendorUserId, audit, publicUser, COMPANY };
+module.exports = { pwPolicy, genPassword, db, JWT_SECRET, MODULES, LEVEL, ApiError, E, wrap, round2, J, now, rid, seqNo, signToken, loadUser, optionalAuth, auth, perm, vendorOnly, activeVendor, v, paginate, pageResult, STATES, stateCodeOf, gstSplit, fyOf, nextNumber, post, balance, ACC, notify, notifyAdmins, vendorUserId, audit, publicUser, COMPANY };

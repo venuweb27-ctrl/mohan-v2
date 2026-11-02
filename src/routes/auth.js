@@ -68,8 +68,13 @@ router.post('/login', wrap(async (req, res) => {
   res.json(loginOk(req, user, 'password'));
 }));
 router.post('/google', wrap(async (req, res) => {
-  let g; try { g = await providers.google.verify(req.body.id_token); } catch (e) { throw E.unauth(e.message); }
-  let user = db.one('SELECT * FROM users WHERE google_id=? OR email=?', g.sub, g.email); let is_new = false;
+  if (!providers.google.enabled()) return res.status(503).json({ error: { code: 'GOOGLE_DISABLED', message: 'Google sign-in is not available yet' } });
+  let g; try { g = await providers.google.verify(req.body.credential || req.body.id_token); } catch (e) { throw E.unauth(e.message); }
+  if (!g.email || !g.email_verified) throw E.unauth('Your Google email is not verified');
+  let user = db.one('SELECT * FROM users WHERE google_id=?', g.sub) || db.one('SELECT * FROM users WHERE lower(email)=lower(?)', g.email); let is_new = false;
+  // Customers only: never sign in to (or link) admin, staff or vendor accounts via Google.
+  if (user && user.role !== 'customer') throw E.forbid('Google sign-in is only for customer accounts. Please sign in with your password.');
+  if (user && user.status === 'blocked') throw E.forbid('Account blocked');
   if (!user) { const id = db.insert('users', { role: 'customer', name: g.name, email: g.email, google_id: g.sub, email_verified: g.email_verified ? 1 : 0 }); user = db.one('SELECT * FROM users WHERE id=?', id); is_new = true; }
   else if (!user.google_id) db.run('UPDATE users SET google_id=? WHERE id=?', g.sub, user.id);
   res.json({ ...loginOk(req, user, 'google'), is_new });
@@ -108,7 +113,10 @@ router.post('/me/change-password', auth(), wrap((req, res) => {
   const { current_password, new_password } = req.body;
   if (req.user.password_hash && !bcrypt.compareSync(String(current_password || ''), req.user.password_hash)) throw E.bad('Current password incorrect');
   if (String(new_password || '').length < 8) throw E.bad('Password must be at least 8 characters');
-  db.run('UPDATE users SET password_hash=? WHERE id=?', bcrypt.hashSync(new_password, 10), req.user.id); res.json({ ok: true });
+  if (['admin', 'staff', 'vendor'].includes(req.user.role)) { const pe = require('../core').pwPolicy(new_password); if (pe) throw E.bad(pe); }
+  db.run('UPDATE users SET password_hash=? WHERE id=?', bcrypt.hashSync(String(new_password), 10), req.user.id);
+  db.run('UPDATE sessions SET revoked=1 WHERE user_id=? AND id<>?', req.user.id, req.jti || '');
+  audit(req, 'password_change', 'user', req.user.id); res.json({ ok: true });
 }));
 router.post('/me/deactivate', auth(), wrap((req, res) => { db.run("UPDATE users SET status='inactive' WHERE id=?", req.user.id); audit(req, 'deactivate', 'user', req.user.id); res.json({ ok: true, status: 'inactive' }); }));
 router.post('/me/activate', auth(), wrap((req, res) => { if (req.user.status === 'blocked') throw E.forbid(); db.run("UPDATE users SET status='active' WHERE id=?", req.user.id); res.json({ ok: true, status: 'active' }); }));

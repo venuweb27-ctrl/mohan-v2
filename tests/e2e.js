@@ -33,6 +33,14 @@ async function main() {
   const login = must(await call('POST', '/auth/otp/verify', { target: mobile, code: otp.dev_code, name: 'E2E Buyer', account_type: 'business', business_name: 'E2E Industries' }), 'verify otp'); ok(login.is_new && login.token, 'new customer + token');
   const C = login.token;
   const g = must(await call('POST', '/auth/google', { id_token: 'mock:e2e.google@example.com:Google User' }), 'google mock login'); ok(!!g.token, 'google token');
+  { const g2 = must(await call('POST', '/auth/google', { credential: 'mock:e2e.google@example.com:Google User' }), 'google login with {credential}'); ok(g2.user.id === g.user.id && g2.is_new === false && g2.user.role === 'customer', 'google re-login finds the same customer');
+    const gn = must(await call('POST', '/auth/google', { credential: 'mock:new.gsi@example.com:New Buyer' }), 'google signup creates customer'); ok(gn.is_new === true && gn.user.role === 'customer' && !!gn.token, 'new Google user is a customer with a JWT');
+    ok((await call('GET', '/auth/me', undefined, gn.token)).status === 200, 'Google JWT works for /auth/me');
+    ok((await call('POST', '/auth/google', { credential: 'mock:unverified@example.com:U:unverified' })).status === 401, 'google unverified email rejected');
+    for (const em of ['admin@mohanmishra.in', 'vendor1@mohanmishra.in', 'ops@mohanmishra.in']) ok((await call('POST', '/auth/google', { credential: `mock:${em}:X` })).status === 403, `google never signs in non-customer ${em}`);
+    ok((await call('POST', '/auth/google', {})).status === 401, 'google missing credential rejected');
+    ok((await call('POST', '/auth/google', { credential: 'garbage' })).status === 401, 'google invalid credential rejected');
+    const cfg = (await call('GET', '/config')).data; ok(cfg.google_client_id === null && cfg.google_mock === true, 'config: no client id (button hidden in prod), mock only in test'); }
   const addr = must(await call('POST', '/auth/me/addresses', { label: 'Plant', name: 'E2E Buyer', mobile, line1: 'Plot 9, GIDC', city: 'Vapi', state: 'Gujarat', pincode: '396195' }, C), 'add address');
   const A = addr.id || addr.address?.id || addr.items?.[0]?.id;
 
@@ -211,6 +219,52 @@ async function main() {
   const al = await (await fetch(BASE + '/.well-known/assetlinks.json')).json(); const fps = al[0]?.target?.sha256_cert_fingerprints || [];
   ok(al[0]?.target?.package_name === 'com.app.mmpl', 'assetlinks package com.app.mmpl');
   ok(fps.includes('68:D0:66:C1:D3:E9:30:1D:32:4D:F5:74:2B:5E:0C:DC:24:D3:3B:50:85:6B:32:35:10:BD:58:33:62:43:59:47') && fps.some(f => f.startsWith('F0:EF:2B')), 'assetlinks has Play signing + upload certs');
+
+  step('Super-admin password management');
+  {
+    const login = (id, pw) => call('POST', '/auth/login', { identifier: id, password: pw });
+    const uid = async (id, pw) => (await login(id, pw)).data.user.id;
+    const vId = await uid('vendor1@mohanmishra.in', 'Vendor@123'), sId = await uid('ops@mohanmishra.in', 'Staff@123');
+    const vTok = (await login('vendor1@mohanmishra.in', 'Vendor@123')).data.token, sTok = (await login('ops@mohanmishra.in', 'Staff@123')).data.token, cTok = (await login('rahul@example.com', 'Customer@123')).data.token;
+    // non-super-admin users are refused
+    ok((await call('POST', `/admin/users/${vId}/password`, { generate: true }, sTok)).status === 403, 'staff cannot reset passwords (403)');
+    ok((await call('POST', `/admin/users/${sId}/password`, { generate: true }, vTok)).status === 403, 'vendor cannot reset passwords (403)');
+    ok((await call('POST', `/admin/users/${sId}/password`, { generate: true }, cTok)).status === 403, 'customer cannot reset passwords (403)');
+    ok((await call('POST', `/admin/users/${sId}/password`, { generate: true })).status === 401, 'anonymous cannot reset passwords (401)');
+    // weak passwords rejected
+    for (const w of ['short1', 'lettersonly', '12345678']) ok((await call('POST', `/admin/users/${vId}/password`, { password: w }, ADM)).status === 400, `weak password "${w}" rejected`);
+    const me = (await call('GET', '/auth/me', undefined, ADM)).data; const meId = me.user?.id || me.id;
+    ok((await call('POST', `/admin/users/${meId}/password`, { generate: true }, ADM)).status === 403, 'super admin cannot reset an admin account via this endpoint');
+    ok((await call('POST', '/admin/users/999999/password', { generate: true }, ADM)).status === 404, 'unknown user → 404');
+    // admin sets vendor password manually
+    const vset = must(await call('POST', `/admin/users/${vId}/password`, { password: 'NewVend0r!pass' }, ADM), 'admin sets vendor password');
+    ok(!('password' in vset) && vset.generated === false, 'manual set does not echo the password');
+    ok((await call('GET', '/auth/me', undefined, vTok)).status === 401, 'vendor existing session revoked');
+    ok((await login('vendor1@mohanmishra.in', 'Vendor@123')).status === 401, 'vendor old password fails');
+    ok((await login('vendor1@mohanmishra.in', 'NewVend0r!pass')).status === 200, 'vendor new password works');
+    // admin generates staff password
+    const g = must(await call('POST', `/admin/users/${sId}/password`, { generate: true }, ADM), 'admin generates staff password');
+    ok(typeof g.password === 'string' && g.password.length >= 12 && g.password.length <= 14 && /[A-Za-z]/.test(g.password) && /\d/.test(g.password) && /[^A-Za-z0-9]/.test(g.password), 'generated password is 12-14 chars with letter, digit, symbol');
+    ok((await call('GET', '/auth/me', undefined, sTok)).status === 401, 'staff existing session revoked');
+    ok((await login('ops@mohanmishra.in', 'Staff@123')).status === 401, 'staff old password fails');
+    ok((await login('ops@mohanmishra.in', g.password)).status === 200, 'staff generated password works');
+    const g2 = must(await call('POST', `/admin/users/${vId}/password`, { generate: true }, ADM), 'generate again'); ok(g2.password !== g.password, 'generated passwords differ');
+    ok((await login('vendor1@mohanmishra.in', g2.password)).status === 200, 'vendor generated password works');
+    // audit entry without password
+    const au = (await call('GET', '/admin/audit-logs?entity=user&limit=50', undefined, ADM)).data; const auTxt = JSON.stringify(au);
+    ok(/password_(set|generated)/.test(auTxt), 'audit log has password entries'); ok(!auTxt.includes(g.password) && !auTxt.includes(g2.password) && !auTxt.includes('NewVend0r!pass'), 'audit log never contains the password');
+    // change own password (staff, vendor, admin)
+    const sTok2 = (await login('ops@mohanmishra.in', g.password)).data.token;
+    ok((await call('POST', '/auth/me/change-password', { current_password: 'wrong', new_password: 'Abcdefg12' }, sTok2)).status === 400, 'change own: wrong current rejected');
+    ok((await call('POST', '/auth/me/change-password', { current_password: g.password, new_password: 'abcdefgh' }, sTok2)).status === 400, 'change own: weak new rejected (staff)');
+    must(await call('POST', '/auth/me/change-password', { current_password: g.password, new_password: 'Staff@123' }, sTok2), 'staff changes own password back');
+    ok((await call('GET', '/auth/me', undefined, sTok2)).status === 200, 'own session stays valid after change');
+    ok((await login('ops@mohanmishra.in', 'Staff@123')).status === 200, 'staff own new password works');
+    const vTok2 = (await login('vendor1@mohanmishra.in', g2.password)).data.token;
+    must(await call('POST', '/auth/me/change-password', { current_password: g2.password, new_password: 'Vendor@123' }, vTok2), 'vendor changes own password back');
+    ok((await login('vendor1@mohanmishra.in', 'Vendor@123')).status === 200, 'vendor own new password works');
+    must(await call('POST', '/auth/me/change-password', { current_password: 'Admin@123', new_password: 'Admin@123' }, ADM), 'admin change-own-password endpoint works');
+  }
 }
 main().catch(e => { if (!String(e.message).startsWith('Abort')) { fail++; failures.push(e.message); console.error(e); } })
   .finally(() => { console.log(`\n${pass} passed, ${fail} failed`); if (failures.length) console.log('Failures:', failures); srv?.kill(); process.exit(fail ? 1 : 0); });

@@ -1,6 +1,6 @@
 // Mohan Mishra PWA service worker: network-first for /api and pages, stale-while-revalidate for static assets.
-const V = 'mm-v9';
-const SHELL = ['/', '/css/app.css?v=9', '/js/icons.js?v=9', '/js/ui.js?v=9', '/js/customer.js?v=9', '/js/vendor.js?v=9', '/js/admin.js?v=9', '/js/panel2.js?v=9', '/js/main.js?v=9', '/assets/brand/logo-rounded.png', '/icons/icon-192.png', '/manifest.webmanifest'];
+const V = 'mm-v10';
+const SHELL = ['/', '/css/app.css?v=10', '/js/icons.js?v=10', '/js/ui.js?v=10', '/js/customer.js?v=10', '/js/vendor.js?v=10', '/js/admin.js?v=10', '/js/panel2.js?v=10', '/js/main.js?v=10', '/assets/brand/logo-rounded.png', '/icons/icon-192.png', '/manifest.webmanifest'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).catch(() => { })); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

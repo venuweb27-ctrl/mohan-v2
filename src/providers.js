@@ -57,20 +57,28 @@ const push = {
   },
 };
 // ---------- Google Sign-In ----------
+// Google Identity Services ID-token verification.
+// Real mode: GOOGLE_CLIENT_ID set → token checked via Google's tokeninfo endpoint (signature/expiry checked by Google), then aud/iss/exp/email_verified here.
+// Mock mode (tests/dev only): NODE_ENV=test or GOOGLE_MOCK=1 → token "mock:<email>:<name>[:unverified]". Never active in production unless explicitly enabled.
 const google = {
+  enabled: () => !!env.GOOGLE_CLIENT_ID || google.mock(),
+  mock: () => !env.GOOGLE_CLIENT_ID && (env.NODE_ENV === 'test' || env.GOOGLE_MOCK === '1'),
+  fetchTokenInfo: async idToken => { const r = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken)); if (!r.ok) throw new Error('Invalid Google token'); return r.json(); },
   async verify(idToken) {
+    idToken = String(idToken || ''); if (!idToken) throw new Error('Missing Google credential');
     if (env.GOOGLE_CLIENT_ID) {
-      const r = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
-      if (!r.ok) throw new Error('Invalid Google token');
-      const p = await r.json();
-      if (p.aud !== env.GOOGLE_CLIENT_ID) throw new Error('Google token audience mismatch');
-      return { sub: p.sub, email: p.email, name: p.name, email_verified: p.email_verified === 'true' || p.email_verified === true };
+      const p = await google.fetchTokenInfo(idToken);
+      const auds = env.GOOGLE_CLIENT_ID.split(',').map(s => s.trim());
+      if (!auds.includes(p.aud)) throw new Error('Google token audience mismatch');
+      if (!['accounts.google.com', 'https://accounts.google.com'].includes(p.iss)) throw new Error('Google token issuer mismatch');
+      if (p.exp && +p.exp * 1000 < Date.now()) throw new Error('Google token expired');
+      return { sub: p.sub, email: String(p.email || '').toLowerCase(), name: p.name, email_verified: p.email_verified === 'true' || p.email_verified === true };
     }
-    // mock: token format "mock:<email>:<name>"
-    if (!String(idToken).startsWith('mock:')) throw new Error('Google Sign-In not configured; use idToken "mock:<email>:<name>" in dev');
-    const [, em, name] = idToken.split(':');
-    return { sub: 'mock-' + em, email: em, name: name || em.split('@')[0], email_verified: true };
-  },
+    if (!google.mock()) throw new Error('Google sign-in is not configured');
+    if (!idToken.startsWith('mock:')) throw new Error('Invalid Google token');
+    const [, em, name, flag] = idToken.split(':');
+    return { sub: 'mock-' + em, email: String(em).toLowerCase(), name: name || em.split('@')[0], email_verified: flag !== 'unverified' };
+  }
 };
 // ---------- GST verification ----------
 const gstVerify = {

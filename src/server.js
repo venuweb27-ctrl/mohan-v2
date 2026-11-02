@@ -30,7 +30,7 @@ try {
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'", "'unsafe-inline'"], scriptSrcAttr: ["'unsafe-inline'"], frameSrc: ["'self'", 'blob:'], objectSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:', 'blob:'], connectSrc: ["'self'"], frameAncestors: ["'none'"] } }, crossOriginEmbedderPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com/gsi/client'], scriptSrcAttr: ["'unsafe-inline'"], frameSrc: ["'self'", 'blob:', 'https://accounts.google.com/gsi/'], objectSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com/gsi/style'], imgSrc: ["'self'", 'data:', 'blob:', 'https://*.googleusercontent.com'], connectSrc: ["'self'", 'https://accounts.google.com/gsi/'], frameAncestors: ["'none'"] } }, crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' } }));
 app.use(cors({ origin: (process.env.CORS_ORIGINS || '*') === '*' ? true : process.env.CORS_ORIGINS.split(','), credentials: false }));
 app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); } }));
 app.use(express.urlencoded({ extended: false }));

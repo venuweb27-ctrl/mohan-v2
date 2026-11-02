@@ -335,3 +335,12 @@ All paths are under `/api/v1`. Admin routes need an admin or staff token with th
 
 
 > Rental endpoints (`/rentals*`, `/vendor/rentals*`, `/admin/rentals*`) are switched off and return 404 (set `ENABLE_RENTALS=1` to restore). Rental tables and data are kept.
+
+
+## Password management
+- `POST /admin/users/:id/password` (super admin only) — body `{password}` (min 8 chars, letter + digit) or `{generate:true}`. Returns `{ok, user, generated, sessions_revoked, password?}`; `password` is only present when generated and is returned once. Admin accounts are refused (403); the target's sessions are revoked; an audit entry (`password_set` / `password_generated`) is written without the password.
+- `POST /auth/me/change-password` — `{current_password, new_password}`; admin/staff/vendor accounts need letter + digit; other sessions are signed out.
+
+## Google sign-in
+- `POST /auth/google {credential}` (legacy `id_token` also accepted) — Google Identity Services ID token. Verified server-side via Google tokeninfo; `aud` must equal `GOOGLE_CLIENT_ID` (comma-separated list allowed), `iss` accounts.google.com, not expired, `email_verified` true. Finds the user by Google id or email, or creates a customer. Returns `{token, user, is_new}`. Non-customer accounts → 403. Unverified/invalid → 401. When `GOOGLE_CLIENT_ID` is unset (and not in test/`GOOGLE_MOCK=1` mode) → 503 and `/config.google_client_id` is null so the button is hidden.
+- Setup: create an OAuth 2.0 Web client in Google Cloud, add `https://store.mohanmishra.app` (and the onrender.com URL) as Authorized JavaScript origins, then set `GOOGLE_CLIENT_ID` on Render.

@@ -19,6 +19,7 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 ## Auth & account (customer)
 - 🟡 Mobile OTP login/registration (mock SMS; `dev_code` returned outside production) — e2e
 - ✅ Email+password login, forgot/reset password via OTP
+- ✅ **Continue with Google** (Google Identity Services) on customer login/signup — server verifies the ID token (tokeninfo: aud = `GOOGLE_CLIENT_ID`, iss, exp, email_verified), finds or creates a **customer** by email and returns the normal JWT; never signs in admin/staff/vendor accounts. Ships disabled: button hidden until `GOOGLE_CLIENT_ID` is set — e2e (mock verifier) + unit
 - 🟡 Google sign-in (mock token `mock:email:name`; real Google ID-token verify not wired)
 - ✅ Profile (individual/business, GSTIN, PAN), addresses CRUD, sessions, deactivate, delete request
 - ✅ Email verification (OTP via mock outbox)
@@ -97,6 +98,8 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 - ✅ Tickets, abuse reports, feedback
 - ✅ Reports with CSV (sales, vendors, products, GST, commission, payments, payouts, refunds, customers, CRM) — e2e
 - ✅ Staff & roles with permission matrix — e2e
+- ✅ Super-admin password management: **Reset / Set password** on Staff, Vendors and Customers lists — set a password (min 8, letter + digit) or generate a strong 12–14 char one (shown once, copy button); revokes the user's sessions; audit-logged without the password (`POST /api/v1/admin/users/:id/password`) — e2e + browser
+- ✅ **Change my password** (Password button in the admin and vendor side menu) for admin, staff and vendor accounts (`POST /api/v1/auth/me/change-password`; signs out other devices) — e2e + browser
 - ✅ Audit logs, login history, notification outbox
 - ✅ Settings (JSON editor), providers status
 

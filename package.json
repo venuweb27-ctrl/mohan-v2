@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "seed": "node src/seed.js --reset",
-    "test": "node tests/e2e.js",
+    "test": "node tests/e2e.js && node tests/google-verify.js",
     "test:browser": "node tests/browser-order.js && node tests/browser-admin.js && node tests/browser-responsive.js && node tests/browser-scroll.js"
   },
   "dependencies": {

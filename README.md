@@ -84,3 +84,7 @@ The free plan's disk is ephemeral, so the SQLite data and uploads reset on every
 - **Navigation:** below 768px customers get a bottom nav (Home · Categories · Cart · Orders · Account); vendor/admin get a bottom nav (Home · Orders · Products · Wallet/CRM · More → drawer). ≥768px keeps the sidebar + top bar. Cart/checkout show a sticky total + action bar above the bottom nav.
 - **Responsive:** tested at 360/390/412/768/1024/1440 (`node tests/browser-responsive.js`): no horizontal overflow, 16px inputs, ≥44–48px touch targets, safe-area insets, `100dvh`, tables in scroll wrappers, modals as bottom sheets on phones.
 - **PWA:** theme `#123B65`, background `#F8FAFC`, service-worker cache `mm-v6`, assets `?v=6`.
+
+
+### Optional: Google sign-in
+Set `GOOGLE_CLIENT_ID` (OAuth Web client ID) to show **Continue with Google** on the customer login. Leave unset to keep it disabled.

@@ -28,6 +28,39 @@ const loginRoute = () => '#/login';
 const go = h => { if (location.hash === h) route(); else location.hash = h; };
 function modal(html, onMount) { const m = $('#modal'); m.innerHTML = `<div class="card">${html}</div>`; m.hidden = false; m.onclick = e => { if (e.target === m) closeModal(); }; onMount && onMount(m.firstChild); return m.firstChild; }
 const closeModal = () => { const m = $('#modal'); m.hidden = true; m.innerHTML = ''; };
+// ---------- Google Identity Services ----------
+function gsiButton(el, onCred) {
+  if (!el || !S.config?.google_client_id) return;
+  const init = () => { google.accounts.id.initialize({ client_id: S.config.google_client_id, callback: r => onCred(r.credential).catch(() => { }), ux_mode: 'popup' }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', width: Math.min(el.clientWidth || 320, 400) }); };
+  if (window.google?.accounts?.id) return init();
+  const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = init; s.onerror = () => toast('Could not load Google sign-in', 1); document.head.append(s);
+}
+// ---------- password management ----------
+const pwOk = p => p.length >= 8 && /[A-Za-z]/.test(p) && /\d/.test(p);
+const pwField = (id, label, ph) => `<label class="pwf">${label}<span class="pwrow"><input type="password" id="${id}" autocomplete="new-password" placeholder="${ph || ''}" maxlength="100"><button type="button" class="btn ghost sm" data-eye="${id}" aria-label="Show password">Show</button></span></label>`;
+function pwEyes(root) { root.querySelectorAll('[data-eye]').forEach(b => b.onclick = () => { const i = root.querySelector('#' + b.dataset.eye); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.textContent = show ? 'Hide' : 'Show'; b.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); }); }
+async function copyText(t) { try { await navigator.clipboard.writeText(t); } catch { const a = document.createElement('textarea'); a.value = t; document.body.append(a); a.select(); document.execCommand('copy'); a.remove(); } toast('Copied to clipboard'); }
+function pwResetDlg(id, label) {
+  modal(`<h3>Reset / Set password</h3><p class="small muted">For <b>${esc(label || 'user #' + id)}</b>. All of their current sessions will be signed out.</p>
+    ${pwField('npw', 'New password', 'At least 8 characters, a letter and a digit')}
+    <div class="row wrap" style="gap:8px;margin-top:8px"><button class="btn ghost sm" id="pwgen">Generate password</button></div>
+    <div id="pwout" class="pwout" hidden><div class="small"><b>New password</b> — Shown once — share it securely</div><div class="pwrow"><code id="pwval"></code><button class="btn sm" id="pwcopy">Copy</button></div></div>
+    <p class="small muted pwnote">Shown once — share it securely. The password is never stored in plain text and cannot be viewed again.</p>
+    <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" id="pwclose">Close</button><button class="btn green" id="pwset">Set password</button></div>`, c => {
+    pwEyes(c); c.querySelector('#pwclose').onclick = closeModal;
+    const shown = p => { c.querySelector('#pwval').textContent = p; c.querySelector('#pwout').hidden = false; c.querySelector('#pwcopy').onclick = () => copyText(p); c.querySelector('#npw').value = ''; };
+    c.querySelector('#pwgen').onclick = async () => { if (!confirm('Generate a new password? The current one stops working immediately.')) return; const r = await POST(`/admin/users/${id}/password`, { generate: true }); shown(r.password); toast('Password generated'); };
+    c.querySelector('#pwset').onclick = async () => { const p = c.querySelector('#npw').value; if (!pwOk(p)) return toast('Use at least 8 characters with a letter and a digit', 1); await POST(`/admin/users/${id}/password`, { password: p }); shown(p); toast('Password updated'); };
+  });
+}
+function changeMyPwDlg() {
+  modal(`<h3>Change my password</h3>${pwField('cpw', 'Current password')}${pwField('npw', 'New password', 'At least 8 characters, a letter and a digit')}${pwField('npw2', 'Confirm new password')}
+    <p class="small muted">Other devices signed in to this account will be signed out.</p>
+    <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" id="pwclose">Cancel</button><button class="btn green" id="pwsave">Change password</button></div>`, c => {
+    pwEyes(c); c.querySelector('#pwclose').onclick = closeModal;
+    c.querySelector('#pwsave').onclick = async () => { const cur = c.querySelector('#cpw').value, n = c.querySelector('#npw').value; if (!pwOk(n)) return toast('Use at least 8 characters with a letter and a digit', 1); if (n !== c.querySelector('#npw2').value) return toast('Passwords do not match', 1); await POST('/auth/me/change-password', { current_password: cur, new_password: n }); closeModal(); toast('Password changed'); };
+  });
+}
 function ask(title, fields, submitText = 'Submit') { return new Promise(res => { modal(`<h3>${esc(title)}</h3>${formHtml(fields)}<div class="row mt" style="justify-content:flex-end"><button class="btn ghost" data-x>Cancel</button><button class="btn" data-ok>${esc(submitText)}</button></div>`, el => { $('[data-x]', el).onclick = () => { closeModal(); res(null); }; $('[data-ok]', el).onclick = () => { const v = readForm(el); closeModal(); res(v); }; }); }); }
 const confirmBox = t => new Promise(res => modal(`<p>${esc(t)}</p><div class="row" style="justify-content:flex-end"><button class="btn ghost" data-x>No</button><button class="btn" data-ok>Yes</button></div>`, el => { $('[data-x]', el).onclick = () => { closeModal(); res(false); }; $('[data-ok]', el).onclick = () => { closeModal(); res(true); }; }));
 // fields: [{k,l,t:'text|number|select|textarea|checkbox|date|password|json',o:[[v,l]],v,req,full}]
@@ -79,10 +112,10 @@ function pshell(nav, title, inner, brand) {
     $('#app').innerHTML = `<div class="panel" data-key="${esc(key)}">
       <aside class="sidenav" id="sidenav"><div class="sidebrand"><a class="logo" href="#/"><img src="/assets/brand/logo-rounded.png" alt=""><span><b>Mohan Mishra</b><small>${esc(brand)}</small></span></a><button class="iconbtn only-m" id="navclose" aria-label="Close menu">${ic('x', 20)}</button></div>
       <nav class="navscroll">${nav.map(([g, items]) => `<div class="navgroup"><h4>${navIcon(g)}<span>${esc(g)}</span></h4>${items.map(([href, l]) => `<a data-nav href="${href}">${esc(l)}</a>`).join('')}</div>`).join('')}</nav>
-      <div class="sidefoot"><div class="me"><span class="avatar">${esc((S.user?.name || '?')[0])}</span><span><b>${esc(S.user?.name || '')}</b><small>${esc(S.user?.role || '')}</small></span></div><a href="#" id="logout" class="btn ghost sm">Log out</a></div></aside>
+      <div class="sidefoot"><div class="me"><span class="avatar">${esc((S.user?.name || '?')[0])}</span><span><b>${esc(S.user?.name || '')}</b><small>${esc(S.user?.role || '')}</small></span></div><a href="#" id="mypw" class="btn ghost sm">Password</a><a href="#" id="logout" class="btn ghost sm">Log out</a></div></aside>
       <div class="navshade" id="navshade"></div>
       <div class="pmainwrap" id="pscroll"><header class="ptop"><button class="iconbtn only-m" id="navopen" aria-label="Open menu">${ic('menu', 20)}</button><div><div class="crumb" id="pcrumb"></div><h1 id="ptitle"></h1></div><div class="grow"></div><button class="iconbtn" data-theme-toggle aria-label="Toggle dark theme">${ic(themeGet() === 'dark' ? 'sun' : 'moon', 20)}</button><a class="pill hide-m" href="/" target="_blank">${ic('external', 18)} Storefront</a></header><main id="pmain" class="stack"></main></div>${pbottom(key)}</div>`;
-    $('#logout').onclick = async e => { e.preventDefault(); await POST('/auth/logout').catch(() => { }); setAuth(null); location.hash = '#/'; route(); };
+    $('#mypw').onclick = e => { e.preventDefault(); changeMyPwDlg(); }; $('#logout').onclick = async e => { e.preventDefault(); await POST('/auth/logout').catch(() => { }); setAuth(null); location.hash = '#/'; route(); };
     const close = () => document.body.classList.remove('navopen');
     $('#navopen').onclick = () => document.body.classList.add('navopen'); $('#pbmore').onclick = e => { e.preventDefault(); document.body.classList.add('navopen'); }; $('#navclose').onclick = close; $('#navshade').onclick = close;
     $('#sidenav .navscroll').addEventListener('click', e => { if (e.target.closest('a')) close(); });
