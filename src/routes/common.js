@@ -42,7 +42,7 @@ router.post('/tickets/:id/messages', auth(), wrap((req, res) => {
 router.post('/tickets/:id/close', auth(), wrap((req, res) => { const t = ticketOf(req); db.run("UPDATE tickets SET status='closed', rating=?, updated_at=CURRENT_TIMESTAMP WHERE id=?", req.body.rating || null, t.id); res.json(ticketDetail(t.id, req.user)); }));
 
 // ----- in-app messaging customer <-> vendor -----
-function convOf(req) { const c = db.one('SELECT * FROM conversations WHERE id=?', req.params.id); const u = req.user; if (!c || !(c.customer_id === u.id || (u.vendor && c.vendor_id === u.vendor.id) || ['admin', 'staff'].includes(u.role))) throw E.notFound(); return c; }
+function convOf(req) { const c = db.one('SELECT * FROM conversations WHERE id=?', req.params.id); const u = req.user; if (!c || c.kind === 'support' || !(c.customer_id === u.id || (u.vendor && c.vendor_id === u.vendor.id) || ['admin', 'staff'].includes(u.role))) throw E.notFound(); return c; }
 router.post('/conversations', auth('customer'), wrap((req, res) => {
   const b = v(req.body, { vendor_id: 'int', product_id: 'int', order_id: 'int', message: 'string|required|max:4000', attachments: 'json' });
   let vid = b.vendor_id; if (!vid && b.product_id) vid = db.one('SELECT vendor_id FROM products WHERE id=?', b.product_id)?.vendor_id; if (!vid) throw E.bad('vendor_id or product_id required');

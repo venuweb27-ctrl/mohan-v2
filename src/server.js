@@ -44,6 +44,7 @@ const api = express.Router();
 api.use(optionalAuth);
 api.get('/health', (req, res) => res.json({ ok: true, name: 'mohanmishra-v2', version: require('../package.json').version, time: new Date().toISOString(), db: db.one('SELECT COUNT(*) c FROM products').c >= 0 }));
 api.use('/auth', require('./routes/auth'));
+api.use('/chat', require('./routes/chat'));
 api.use('/vendor', require('./routes/vendor'));
 api.use('/admin', require('./routes/admin'));
 api.use('/', require('./routes/catalog'));

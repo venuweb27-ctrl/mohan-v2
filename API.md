@@ -344,3 +344,21 @@ All paths are under `/api/v1`. Admin routes need an admin or staff token with th
 ## Google sign-in
 - `POST /auth/google {credential}` (legacy `id_token` also accepted) — Google Identity Services ID token. Verified server-side via Google tokeninfo; `aud` must equal `GOOGLE_CLIENT_ID` (comma-separated list allowed), `iss` accounts.google.com, not expired, `email_verified` true. Finds the user by Google id or email, or creates a customer. Returns `{token, user, is_new}`. Non-customer accounts → 403. Unverified/invalid → 401. When `GOOGLE_CLIENT_ID` is unset (and not in test/`GOOGLE_MOCK=1` mode) → 503 and `/config.google_client_id` is null so the button is hidden.
 - Setup: create an OAuth 2.0 Web client in Google Cloud, add `https://store.mohanmishra.app` (and the onrender.com URL) as Authorized JavaScript origins, then set `GOOGLE_CLIENT_ID` on Render.
+
+## In-app chat (`/api/v1/chat`, auth required)
+Threads: `kind=vendor` (customer ↔ seller, tied to a product or order) and `kind=support` (customer ↔ Mohan Mishra Support). Admins and staff with the `support` permission can view any thread, join it, close/reopen it, and remove messages. Inaccessible threads return 404. Live updates use short polling (`GET /threads/:id?after=<last id>`, every `chat_poll_ms` from `/config`).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | /chat/threads | My threads (moderators: all; filters `kind`, `status`, `q`, `scope=mine`). Each row has `unread`, `last_message`, `title`, `context` |
+| GET | /chat/unread | `{ total, threads }` for badges |
+| POST | /chat/threads | `{ kind: 'vendor'|'support', product_id?, order_id?, vendor_id?, body?, attachments? }`: find-or-create. The order must be yours; `vendor_id` is needed for multi-seller orders |
+| GET | /chat/threads/:id | `?after=` for incremental fetch, `?peek=1` to skip marking read. Returns `messages`, `seen_upto`, `can_post`, `can_moderate` |
+| POST | /chat/threads/:id/messages | `{ body, attachments: [uploadUrl…], after? }` returns 201 with the new messages |
+| POST | /chat/threads/:id/read | Mark read |
+| POST | /chat/threads/:id/join | Moderator joins (system message + audit) |
+| POST | /chat/threads/:id/status | Moderator `{ status: 'open'|'closed' }` |
+| DELETE | /chat/messages/:id | Moderator soft-delete (audited; text not logged) |
+
+Abuse guard: `CHAT_RATE_PER_MIN` (default 20 messages/min per user; moderators 3×) returns 429 `RATE_LIMITED`. `CHAT_MAX_LEN` (2000). Attachments: up to 4 images you uploaded via `POST /uploads`, each at most `CHAT_MAX_IMG_MB` (5). Push for chat is off unless `CHAT_PUSH=1` (FCM hook); in-app notifications of type `chat` are always created.
+`/config` adds `whatsapp_number` (env `WHATSAPP_CHAT_NUMBER`, default 919522224488) and `chat_poll_ms` (env `CHAT_POLL_MS`, 5000).

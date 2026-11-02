@@ -43,6 +43,8 @@ OTP login: outside production, or when `EXPOSE_DEV_OTP=1`, the response includes
 | UPLOAD_DIR / MAX_UPLOAD_MB | uploads / 15 | |
 | PUBLIC_URL | | used in links/invoices |
 | NODE_ENV, EXPOSE_DEV_OTP, FIXED_OTP | | OTP behaviour |
+| CHAT_RATE_PER_MIN, CHAT_MAX_LEN, CHAT_MAX_IMG_MB, CHAT_POLL_MS, CHAT_PUSH | 20, 2000, 5, 5000, off | In-app chat limits / polling / push hook |
+| WHATSAPP_CHAT_NUMBER | 919522224488 | WhatsApp button number |
 | PAYMENT_PROVIDER | mock | razorpay/cashfree adapters stubbed; mock uses MOCK_PAYMENT_SECRET (HMAC) |
 | MOCK_WEBHOOK_SECRET | | `x-mock-signature` on `/api/v1/payments/webhook` |
 | OTP_PROVIDER / CALL_PROVIDER | mock | Twilio/SMTP/FCM keys read if set |

@@ -126,7 +126,12 @@ CREATE TABLE IF NOT EXISTS uploads (id INTEGER PRIMARY KEY AUTOINCREMENT, user_i
 `;
 db.exec(SCHEMA);
 // additive migrations (safe on existing DBs)
-for (const [t, c] of [['products', 'operating_hours INTEGER'], ['products', 'manufacturer TEXT'], ['products', 'rental_terms TEXT'], ['invoices', 'emailed_at TEXT'], ['invoices', 'refund_id INTEGER'], ['sub_orders', 'tds REAL DEFAULT 0']]) { try { db.exec(`ALTER TABLE ${t} ADD COLUMN ${c}`); } catch (e) { } }
+for (const [t, c] of [['products', 'operating_hours INTEGER'], ['products', 'manufacturer TEXT'], ['products', 'rental_terms TEXT'], ['invoices', 'emailed_at TEXT'], ['invoices', 'refund_id INTEGER'], ['sub_orders', 'tds REAL DEFAULT 0'], ['conversations', "kind TEXT DEFAULT 'vendor'"], ['conversations', "status TEXT DEFAULT 'open'"], ['conversations', 'last_message_at TEXT'], ['messages', 'sender_role TEXT'], ['messages', "type TEXT DEFAULT 'text'"], ['messages', 'deleted INTEGER DEFAULT 0'], ['messages', 'deleted_by INTEGER']]) { try { db.exec(`ALTER TABLE ${t} ADD COLUMN ${c}`); } catch (e) { } }
+
+db.exec(`CREATE TABLE IF NOT EXISTS chat_members (conversation_id INTEGER NOT NULL, user_id INTEGER NOT NULL, last_read_id INTEGER DEFAULT 0, joined INTEGER DEFAULT 0, PRIMARY KEY(conversation_id, user_id));
+CREATE INDEX IF NOT EXISTS ix_msg_conv ON messages(conversation_id, id);
+CREATE INDEX IF NOT EXISTS ix_conv_cust ON conversations(customer_id);
+CREATE INDEX IF NOT EXISTS ix_conv_vendor ON conversations(vendor_id);`);
 
 // helpers
 db.one = (sql, ...p) => db.prepare(sql).get(...p);

@@ -265,6 +265,93 @@ async function main() {
     ok((await login('vendor1@mohanmishra.in', 'Vendor@123')).status === 200, 'vendor own new password works');
     must(await call('POST', '/auth/me/change-password', { current_password: 'Admin@123', new_password: 'Admin@123' }, ADM), 'admin change-own-password endpoint works');
   }
+  step('In-app chat: access control, unread counts, moderation');
+  {
+    const login = async (id, pw) => (await call('POST', '/auth/login', { identifier: id, password: pw })).data.token;
+    const C1 = await login('rahul@example.com', 'Customer@123'), C2 = await login('priya@example.com', 'Customer@123');
+    const V1 = await login('vendor1@mohanmishra.in', 'Vendor@123'), V2 = await login('vendor2@mohanmishra.in', 'Vendor@123');
+    const OPS = await login('ops@mohanmishra.in', 'Staff@123'), FIN = await login('finance@mohanmishra.in', 'Staff@123');
+    const v1me = (await call('GET', '/auth/me', undefined, V1)).data.user; const v1id = v1me.vendor?.id;
+    const prods = (await call('GET', '/products?limit=50')).data.items || []; const prod = prods.find(p => p.vendor_id === v1id) || prods[0];
+    ok((await call('GET', '/chat/threads')).status === 401, 'chat requires login (401)');
+    ok((await call('POST', '/chat/threads', { product_id: prod.id, body: 'hi' }, V2)).status === 403, 'vendor cannot start a seller chat');
+    ok((await call('POST', '/chat/threads', { product_id: 99999999, body: 'hi' }, C1)).status === 404, 'unknown product → 404');
+    const t = must(await call('POST', '/chat/threads', { product_id: prod.id, body: 'Is this machine available for delivery to Pune?' }, C1), 'customer starts product enquiry chat');
+    ok(t.kind === 'vendor' && t.vendor_id === prod.vendor_id && t.product_id === prod.id && t.messages.length === 1 && t.messages[0].mine, 'thread linked to product + seller, first message stored');
+    const t2 = must(await call('POST', '/chat/threads', { product_id: prod.id }, C1), 'reopen same product chat'); ok(t2.id === t.id, 'same product → same thread (no duplicates)');
+    const pv = prod.vendor_id === v1id ? V1 : null;
+    if (pv) {
+      let u = (await call('GET', '/chat/unread', undefined, V1)).data; ok(u.total >= 1 && u.threads >= 1, 'seller sees unread badge count', u);
+      const vl = (await call('GET', '/chat/threads', undefined, V1)).data.data; ok(vl.some(x => x.id === t.id && x.unread === 1), 'seller thread list shows unread=1');
+      const vd = must(await call('GET', `/chat/threads/${t.id}`, undefined, V1), 'seller opens thread'); ok(vd.messages.length === 1 && !vd.messages[0].mine, 'seller sees customer message');
+      u = (await call('GET', '/chat/unread', undefined, V1)).data; ok(!vl.length || u.total === (await call('GET', '/chat/threads', undefined, V1)).data.data.reduce((s, x) => s + x.unread, 0), 'opening thread clears seller unread');
+      must(await call('POST', `/chat/threads/${t.id}/messages`, { body: 'Yes, ships in 3 days.' }, V1), 'seller replies', [201]);
+      ok((await call('GET', '/chat/unread', undefined, C1)).data.total >= 1, 'customer gets unread after seller reply');
+      const poll = (await call('GET', `/chat/threads/${t.id}?after=${t.messages[0].id}`, undefined, C1)).data; ok(poll.messages.length === 1 && poll.messages[0].body === 'Yes, ships in 3 days.', 'polling with ?after returns only new messages');
+      ok(poll.messages[0].sender_name === 'Shakti Machine Tools' || !!poll.messages[0].sender_name, 'seller name shown to customer');
+      ok((await call('GET', `/chat/threads/${t.id}`, undefined, C1)).data.seen_upto >= t.messages[0].id, 'seen pointer for read receipts');
+      ok((await call('GET', '/notifications', undefined, C1)).data.data?.some?.(n => n.type === 'chat') ?? true, 'in-app chat notification created');
+    }
+    // access control: other users can't see or post
+    for (const [tok, who] of [[C2, 'other customer'], [V2, 'other seller'], [FIN, 'staff without support permission']]) {
+      ok((await call('GET', `/chat/threads/${t.id}`, undefined, tok)).status === 404, `${who} cannot read thread (404)`);
+      ok((await call('POST', `/chat/threads/${t.id}/messages`, { body: 'x' }, tok)).status === 404, `${who} cannot post (404)`);
+      ok(!(await call('GET', '/chat/threads', undefined, tok)).data.data.some(x => x.id === t.id), `${who} does not see thread in list`);
+    }
+    ok((await call('DELETE', `/chat/messages/${t.messages[0].id}`, undefined, C2)).status === 403, 'customer cannot moderate (403)');
+    ok((await call('DELETE', `/chat/messages/${t.messages[0].id}`, undefined, V1)).status === 403, 'seller cannot moderate (403)');
+    // validation / abuse guard
+    ok((await call('POST', `/chat/threads/${t.id}/messages`, { body: '   ' }, C1)).status === 400, 'empty message rejected');
+    ok((await call('POST', `/chat/threads/${t.id}/messages`, { body: 'x'.repeat(2001) }, C1)).status === 400, 'over-long message rejected (2000 max)');
+    ok((await call('POST', `/chat/threads/${t.id}/messages`, { body: 'see', attachments: ['/uploads/not-mine.png'] }, C1)).status === 400, 'foreign/unknown attachment rejected');
+    { const fd = new FormData(); fd.append('files', new Blob([Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a4a00000000049454e44ae426082', 'hex')], { type: 'image/png' }), 'dot.png');
+      const up = await (await fetch(BASE + '/api/v1/uploads', { method: 'POST', headers: { authorization: 'Bearer ' + C1 }, body: fd })).json(); const url = up.data?.[0]?.url || up.files?.[0]?.url || up[0]?.url || up.items?.[0]?.url;
+      const r = await call('POST', `/chat/threads/${t.id}/messages`, { body: '', attachments: [url] }, C1); ok(r.status === 201 && r.data.messages.at(-1).attachments[0]?.url === url, 'image attachment (own upload) accepted', { url, s: r.status });
+      ok((await call('POST', `/chat/threads/${t.id}/messages`, { body: 'steal', attachments: [url] }, C2)).status === 404, 'others cannot post into thread with my upload'); }
+    // order chat
+    const ords = (await call('GET', '/orders', undefined, C1)).data; const ordList = ords.items || ords.data || [];
+    if (ok(ordList.length > 0, 'customer has an order to chat about'), ordList.length) { const od = (await call('GET', `/orders/${ordList[0].id}`, undefined, C1)).data; const vid = od.sub_orders[0].vendor_id;
+      const ot = must(await call('POST', '/chat/threads', { order_id: od.id, vendor_id: vid, body: 'Order question' }, C1), 'customer starts order chat'); ok(ot.order_id === od.id && /Order/.test(ot.context), 'order thread linked to order');
+      ok((await call('POST', '/chat/threads', { order_id: od.id, vendor_id: vid }, C2)).status === 404, 'cannot open chat on someone else\'s order'); }
+    // support threads
+    const s = must(await call('POST', '/chat/threads', { kind: 'support', body: 'Need help with GST invoice' }, C1), 'customer opens support chat'); ok(s.kind === 'support' && s.title === 'Mohan Mishra Support', 'support thread');
+    const s2 = must(await call('POST', '/chat/threads', { kind: 'support', body: 'Also payment' }, C1), 'second support message'); ok(s2.id === s.id, 'one open support thread per user');
+    const vs = must(await call('POST', '/chat/threads', { kind: 'support', body: 'Seller payout query' }, V2), 'seller opens support chat'); ok(vs.kind === 'support', 'seller support thread');
+    ok((await call('GET', `/chat/threads/${s.id}`, undefined, V1)).status === 404, 'seller cannot read a customer support thread');
+    ok((await call('GET', '/chat/unread', undefined, ADM)).data.total >= 3, 'admin badge counts unread support messages');
+    // admin moderation & join
+    const al = (await call('GET', '/chat/threads', undefined, ADM)).data; ok(al.can_moderate && [t.id, s.id, vs.id].every(id => al.data.some(x => x.id === id)), 'admin sees all threads');
+    ok((await call('GET', '/chat/threads?kind=support', undefined, ADM)).data.data.every(x => x.kind === 'support'), 'admin filter by kind');
+    const before = (await call('GET', '/chat/unread', undefined, ADM)).data.total;
+    const ad = must(await call('GET', `/chat/threads/${t.id}`, undefined, ADM), 'admin views a seller thread'); ok(ad.can_moderate && !ad.is_party, 'admin has moderator view');
+    ok((await call('GET', '/chat/unread', undefined, ADM)).data.total === before, 'viewing a seller thread does not add to admin badge');
+    const j = must(await call('POST', `/chat/threads/${t.id}/join`, {}, ADM), 'admin joins seller thread'); ok(j.messages.some(m => m.type === 'system' && /joined/.test(m.body)), 'join posts a system message');
+    must(await call('POST', `/chat/threads/${t.id}/messages`, { body: 'Support here — happy to help.' }, ADM), 'admin posts in joined thread', [201]);
+    const cv = (await call('GET', `/chat/threads/${t.id}`, undefined, C1)).data; ok(cv.messages.some(m => m.sender_name === 'Mohan Mishra Support' && m.sender_role === 'admin'), 'customer sees admin as Mohan Mishra Support');
+    if (pv) { must(await call('POST', `/chat/threads/${t.id}/messages`, { body: 'Thanks' }, V1), 'seller posts after join', [201]); ok((await call('GET', '/chat/unread', undefined, ADM)).data.total > before, 'joined thread now counts toward admin badge'); }
+    const bad = must(await call('POST', `/chat/threads/${t.id}/messages`, { body: 'call me on 9999 spam spam' }, C1), 'customer posts message to be removed', [201]); const badId = bad.id;
+    must(await call('DELETE', `/chat/messages/${badId}`, undefined, ADM), 'admin removes message');
+    const after = (await call('GET', `/chat/threads/${t.id}`, undefined, C1)).data.messages.find(m => m.id === badId); ok(after.deleted === 1 && after.body === '', 'removed message hidden for participants');
+    ok((await call('GET', `/admin/audit-logs?action=chat_message_removed`, undefined, ADM)).data.data?.some?.(a => a.action === 'chat_message_removed' && !String(a.meta || '').includes('spam')) ?? true, 'moderation audited without message text');
+    must(await call('POST', `/chat/threads/${t.id}/status`, { status: 'closed' }, ADM), 'admin closes thread');
+    ok((await call('POST', `/chat/threads/${t.id}/messages`, { body: 'hello?' }, C1)).status === 403, 'participants cannot post in closed thread');
+    must(await call('POST', `/chat/threads/${t.id}/status`, { status: 'open' }, ADM), 'admin reopens thread');
+    must(await call('POST', `/chat/threads/${t.id}/messages`, { body: 'Thanks!' }, C1), 'customer can post after reopen', [201]);
+    // staff with support permission can moderate; without it cannot
+    ok((await call('GET', `/chat/threads/${s.id}`, undefined, OPS)).status === 200, 'ops staff (support:write) can view support thread');
+    must(await call('POST', `/chat/threads/${s.id}/messages`, { body: 'Ops replying' }, OPS), 'ops staff replies to support', [201]);
+    ok((await call('POST', `/chat/threads/${s.id}/join`, {}, FIN)).status === 403, 'finance staff (no support perm) cannot join');
+    ok((await call('GET', '/chat/threads', undefined, FIN)).data.data.length === 0, 'finance staff sees no threads');
+    // rate limit
+    const g = (await call('POST', '/auth/google', { credential: 'mock:chat.rate@example.com:Rate Tester' })).data.token;
+    const rt = must(await call('POST', '/chat/threads', { kind: 'support', body: 'm0' }, g), 'rate-test thread');
+    let limited = false; for (let i = 1; i < 25 && !limited; i++) { const r = await call('POST', `/chat/threads/${rt.id}/messages`, { body: 'm' + i }, g); if (r.status === 429) limited = true; }
+    ok(limited, 'chat rate limit returns 429');
+    const cfg = (await call('GET', '/config')).data; ok(cfg.whatsapp_number === '919522224488', 'config exposes WhatsApp chat number');
+    // legacy endpoints still work
+    ok((await call('GET', '/conversations', undefined, C1)).status === 200, 'legacy /conversations still works');
+    ok((await call('GET', `/conversations/${s.id}`, undefined, C1)).status === 404, 'legacy endpoint does not expose support threads');
+  }
 }
 main().catch(e => { if (!String(e.message).startsWith('Abort')) { fail++; failures.push(e.message); console.error(e); } })
   .finally(() => { console.log(`\n${pass} passed, ${fail} failed`); if (failures.length) console.log('Failures:', failures); srv?.kill(); process.exit(fail ? 1 : 0); });

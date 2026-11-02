@@ -1,6 +1,6 @@
 // Admin panel
 const A = {};
-const ANAV = [['Overview', [['#/', 'Dashboard'], ['#/reports', 'Reports']]], ['Users', [['#/customers', 'Customers'], ['#/vendors', 'Vendors & KYC']]], ['Catalog', [['#/products', 'Product approvals'], ['#/c/categories', 'Categories'], ['#/c/brands', 'Brands'], ['#/c/attributes', 'Attributes'], ['#/reviews', 'Reviews']]],
+const ANAV = [['Overview', [['#/', 'Dashboard'], ['#/chats', 'Messages'], ['#/reports', 'Reports']]], ['Users', [['#/customers', 'Customers'], ['#/vendors', 'Vendors & KYC']]], ['Catalog', [['#/products', 'Product approvals'], ['#/c/categories', 'Categories'], ['#/c/brands', 'Brands'], ['#/c/attributes', 'Attributes'], ['#/reviews', 'Reviews']]],
   ['Commerce', [['#/orders', 'Orders'], ['#/enquiries', 'Enquiries'], ['#/quotations', 'Quotations'], ['#/requests', 'Returns & disputes'], ['#/refunds', 'Refunds']]],
   ['Finance', [['#/payments', 'Payments'], ['#/withdrawals', 'Withdrawals'], ['#/invoices', 'Invoices & notes'], ['#/c/commission-rules', 'Commission rules'], ['#/commissions', 'Commissions'], ['#/ledger', 'Ledger'], ['#/webhooks', 'Webhooks']]],
   ['Marketing', [['#/c/coupons', 'Coupons'], ['#/c/banners', 'Banners'], ['#/c/cms', 'CMS pages'], ['#/c/faqs', 'FAQs'], ['#/c/announcements', 'Announcements'], ['#/broadcast', 'Broadcast'], ['#/crm', 'CRM']]],

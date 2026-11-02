@@ -151,3 +151,10 @@ Legend: ✅ done (works end-to-end, real logic) · 🟡 partial / works against 
 - **Navigation:** below 768px customers get a bottom nav (Home · Categories · Cart · Orders · Account); vendor/admin get a bottom nav (Home · Orders · Products · Wallet/CRM · More → drawer). ≥768px keeps the sidebar + top bar. Cart/checkout show a sticky total + action bar above the bottom nav.
 - **Responsive:** tested at 360/390/412/768/1024/1440 (`node tests/browser-responsive.js`): no horizontal overflow, 16px inputs, ≥44–48px touch targets, safe-area insets, `100dvh`, tables in scroll wrappers, modals as bottom sheets on phones.
 - **PWA:** theme `#123B65`, background `#F8FAFC`, service-worker cache `mm-v6`, assets `?v=6`.
+
+## In-app chat & WhatsApp
+- Customer ↔ seller chat from the product page ("Chat with seller") and the order page; customer ↔ support threads from Account → Messages.
+- Admin/support staff can see every thread, join it, close/reopen it, and remove messages (audited).
+- M3 chat UI with bubbles, day separators, seen ticks, and image attachments (max 5 MB). Unread badges in the customer header and Account tab, and in the vendor/admin header; a "Messages" entry in the panel nav. Updates arrive by 5 s polling.
+- Rate limit, max length, and role checks. FCM push hook is present but disabled (`CHAT_PUSH=1` turns it on).
+- "Chat on WhatsApp" (+91 95222 24488) on product pages (prefilled with the product name and link) and on Messages.
