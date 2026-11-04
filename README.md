@@ -20,7 +20,9 @@ npm test              # e2e API suite (starts its own server on a temp DB)
 ```
 Requires Node 18 or later (developed on Node 24). The database is SQLite through better-sqlite3, at `data/mohanmishra.db` by default.
 
-## Demo accounts (seed)
+## Demo accounts (seed) — INTERNAL ONLY
+
+> Internal developer reference. Never show these on login pages or in user-facing docs; change or remove them on production.
 | Role | Email | Password |
 |---|---|---|
 | Admin | admin@mohanmishra.in | Admin@123 |
