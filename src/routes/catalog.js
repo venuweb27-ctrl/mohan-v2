@@ -130,7 +130,8 @@ router.get('/home', wrap((req, res) => {
     recent: L('', 'p.created_at DESC, p.id DESC'),
     rental: [], // rentals switched off; key kept for API compatibility
     recommended, recently_viewed, nearby,
-    featured_vendors: db.all("SELECT id,business_name,city,state,rating,rating_count,logo FROM vendors WHERE status='active' AND featured=1 ORDER BY rating DESC LIMIT 10"),
+    featured_vendors: db.all("SELECT id,business_name,city,state,rating,rating_count,logo FROM vendors v WHERE status='active' AND featured=1 AND EXISTS (SELECT 1 FROM products p WHERE p.vendor_id=v.id AND p.status='approved' AND p.active=1) ORDER BY rating DESC LIMIT 10"),
+    stats: { products: db.one("SELECT COUNT(*) n FROM products WHERE status='approved' AND active=1").n, vendors: db.one("SELECT COUNT(DISTINCT vendor_id) n FROM products WHERE status='approved' AND active=1").n },
     announcements: db.all("SELECT * FROM announcements WHERE active=1 AND audience IN ('all','customers') ORDER BY id DESC LIMIT 3"),
     popular_searches: db.all("SELECT q, COUNT(*) c FROM search_history GROUP BY q ORDER BY c DESC LIMIT 8").map(r => r.q),
   });

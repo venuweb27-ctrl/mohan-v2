@@ -21,10 +21,10 @@ function lpHTML(o) {
   <section class="lp-hero" aria-label="Welcome"><div style="position:relative;z-index:1">
     <div class="lp-brand"><img src="${logo}" alt="Mohan Mishra logo">Mohan Mishra · Machinery Marketplace</div>
     <h1>Industrial machinery,<br><em>delivered pan-India.</em></h1>
-    <p class="lead">Buy CNC machines, gensets, compressors, earthmovers and tools from verified sellers, with a GST tax invoice on every order.</p>
-    <form class="lp-search" id="lpsearch" role="search"><input name="q" placeholder="Search CNC, gensets, compressors…" aria-label="Search machinery"><button class="lp-btn o" type="submit">Search</button></form>
+    <p class="lead">Buy concrete mixer lift machines, concrete mixers and diesel engines direct from Mohan Mishra, with a GST tax invoice on every order.</p>
+    <form class="lp-search" id="lpsearch" role="search"><input name="q" placeholder="Search concrete mixers, diesel engines…" aria-label="Search machinery"><button class="lp-btn o" type="submit">Search</button></form>
     <div class="lp-cta"><a class="lp-btn o" href="${o.shopHref || '#/search'}">Shop machinery</a><a class="lp-btn ol" href="${o.quoteHref || '#/enquire'}">Get bulk quote</a></div>
-    <div class="lp-stats"><div><b>${o.stats?.products || '500+'}</b><span>Machines listed</span></div><div><b>${o.stats?.vendors || '100+'}</b><span>Verified vendors</span></div><div><b>28</b><span>States served</span></div></div></div>
+    <div class="lp-stats"><div><b>${o.stats?.products || '500+'}</b><span>Machines listed</span></div><div><b>${o.stats?.vendors || '100+'}</b><span>Sellers</span></div><div><b>${o.stats?.categories ?? (o.categories || []).length}</b><span>Categories</span></div></div></div>
     <div class="lp-visual"><div class="lp-card">${LP_ART}</div><div class="lp-chipfloat" style="left:-18px;top:18px"><i></i>GST invoice included</div><div class="lp-chipfloat" style="right:-8px;bottom:22px">🚚 Freight & installation</div></div>
   </section>
   <section class="lp-trust" aria-label="Why buy with us"><div><span class="ti">${lpIc('invoice')}</span><span><b>GST tax invoice</b><span>Claim input tax credit on every order</span></span></div><div><span class="ti">${lpIc('shield')}</span><span><b>Verified vendors</b><span>KYC, GSTIN and bank checked</span></span></div><div><span class="ti">${lpIc('lock')}</span><span><b>Secure payment</b><span>Full, advance or partial: UPI, cards, net banking</span></span></div></section>

@@ -69,7 +69,9 @@ db.transaction(() => {
   const pu = ins('users', { role: 'vendor', name: 'New Vendor', email: 'vendor5@mohanmishra.in', mobile: '9100000005', password_hash: H('Vendor@123'), account_type: 'business' });
   ins('vendors', { user_id: pu, business_name: 'Sunrise Welding Solutions', gstin: '08AAFCS5555E1Z5', pan: 'AAFCS5555E', city: 'Jaipur', state: 'Rajasthan', state_code: '08', address: 'VKI Area', kyc_status: 'submitted', status: 'pending', bank_account_name: 'Sunrise', bank_account_no: '1234567890', bank_ifsc: 'ICIC0000123', agreement_accepted: 1, commission_agreement_accepted: 1 });
 
-  // categories
+  // categories / products: real catalogue by default; the old demo catalogue only for tests (NODE_ENV=test or SEED_DEMO_CATALOGUE=1)
+  const DEMO = process.env.SEED_DEMO_CATALOGUE === '1' || process.env.NODE_ENV === 'test'; const cat = {};
+  if (DEMO) {
   const CATS = [
     ['CNC Machines', 'cnc', '8457', 18, ['CNC Lathes', 'Vertical Machining Centres', 'CNC Routers']],
     ['Air Compressors', 'compressor', '8414', 18, ['Screw Compressors', 'Reciprocating Compressors']],
@@ -80,7 +82,6 @@ db.transaction(() => {
     ['Welding Machines', 'welding', '8515', 18, ['MIG / TIG Welders', 'Arc Welders']],
     ['Power Tools', 'tools', '8467', 18, ['Drills', 'Grinders']],
   ];
-  const cat = {};
   CATS.forEach(([n, k, hsn, gst, subs], i) => {
     const id = ins('categories', { name: n, slug: k, hsn, gst_rate: gst, sort_order: i, featured: i < 6 ? 1 : 0, image: svg('cat-' + k, k, i), icon: k, description: `${n} for Indian industry — new and used.` });
     cat[k] = { id, subs: subs.map((s, j) => ins('categories', { name: s, parent_id: id, slug: k + '-' + j, hsn, gst_rate: gst, sort_order: j })) };
@@ -121,24 +122,40 @@ db.transaction(() => {
   // one pending product for approval flow
   ins('products', { vendor_id: vids[1], category_id: cat.compressor.id, subcategory_id: cat.compressor.subs[0], brand_id: brand.ELGi, name: 'ELGi EG 22 Screw Compressor (pending approval)', model_no: 'EG22', condition: 'new', price: 620000, stock: 2, images: [svg('pending1', 'compressor', 2)], status: 'pending', location_city: 'Ahmedabad', location_state: 'Gujarat' });
 
+  } else {
+    // Real Mohan Mishra catalogue (src/catalogue.js), listed by the company's own store "Mohan Mishra Direct".
+    const C = require('./catalogue'); const co = require('./core').COMPANY();
+    const huid = ins('users', { name: 'Mohan Mishra Direct', email: 'direct@mohanmishra.in', role: 'vendor', status: 'active', password_hash: H(require('crypto').randomBytes(12).toString('hex')) });
+    const hv = ins('vendors', { user_id: huid, business_name: 'Mohan Mishra Direct', business_type: 'private_limited', gstin: co.gstin, pan: co.pan, address: co.address, city: 'Mumbai', state: co.state || 'Maharashtra', state_code: co.state_code || '27', kyc_status: 'approved', status: 'active', agreement_accepted: 1, commission_agreement_accepted: 1, commission_pct: 0 });
+    C.CATEGORIES.forEach((c, i) => {
+      const id = ins('categories', { name: c.name, slug: c.slug, hsn: c.hsn, gst_rate: c.gst_rate, sort_order: i, featured: 1, image: `/img/catalogue/icon-${c.icon}.svg`, icon: c.icon, description: `${c.name} from Mohan Mishra.` });
+      cat[c.name] = { id, subs: Object.fromEntries(c.subs.map((s, j) => [s, ins('categories', { name: s, parent_id: id, slug: c.slug + '-' + s.toLowerCase().replace(/[^a-z0-9]+/g, '-'), hsn: c.hsn, gst_rate: c.gst_rate, sort_order: j })])) };
+    });
+    const brand = Object.fromEntries(C.BRANDS.map(b => [b, ins('brands', { name: b, manufacturer: b, country: 'India' })]));
+    C.PRODUCTS.forEach(p => {
+      const pid = ins('products', { vendor_id: hv, category_id: cat[p.category].id, subcategory_id: p.sub ? cat[p.category].subs[p.sub] : null, brand_id: brand[p.brand], name: p.name, slug: p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + p.brand.toLowerCase().replace(/[^a-z]+/g, '-') + '-' + p.no, description: p.description, condition: 'new', price: p.price, gst_rate: p.gst_rate, hsn: p.hsn, stock: p.stock, moq: 1, purchase_available: 1, rental_available: 0, images: [p.image], location_city: 'Mumbai', location_state: 'Maharashtra', status: 'approved', featured: 1, active: 1 });
+      ins('product_approvals', { product_id: pid, action: 'approved', remarks: 'Seed (real catalogue)' });
+    });
+    ins('banners', { title: 'Concrete Mixer Lift Machines', subtitle: 'Heavy-duty mixers and diesel engines from Mohan Mishra', image: '/img/catalogue/cat-construction-machinery.svg', link: '/#/search?category_id=' + cat['Construction Machinery'].id, sort_order: 0 });
+  }
   // commission rules
   ins('commission_rules', { scope: 'global', txn_type: 'purchase', mode: 'percent', value: 5 });
   ins('commission_rules', { scope: 'global', txn_type: 'rental', mode: 'percent', value: 8 });
-  ins('commission_rules', { scope: 'category', scope_id: cat.tools.id, txn_type: 'purchase', mode: 'percent', value: 8 });
-  ins('commission_rules', { scope: 'category', scope_id: cat.earthmoving.id, txn_type: 'purchase', mode: 'percent', value: 3 });
+  if (DEMO) ins('commission_rules', { scope: 'category', scope_id: cat.tools.id, txn_type: 'purchase', mode: 'percent', value: 8 });
+  if (DEMO) ins('commission_rules', { scope: 'category', scope_id: cat.earthmoving.id, txn_type: 'purchase', mode: 'percent', value: 3 });
 
   // coupons
   ins('coupons', { code: 'WELCOME5', description: '5% off your first order (max ₹5,000)', type: 'percent', value: 5, min_order: 10000, max_discount: 5000, per_user_limit: 1, campaign: 'onboarding' });
   ins('coupons', { code: 'FLAT2000', description: '₹2,000 off on orders above ₹50,000', type: 'flat', value: 2000, min_order: 50000, per_user_limit: 3 });
-  ins('coupons', { code: 'TOOLS10', description: '10% off power tools', type: 'percent', value: 10, max_discount: 1500, category_id: cat.tools.id, per_user_limit: 5 });
+  if (DEMO) ins('coupons', { code: 'TOOLS10', description: '10% off power tools', type: 'percent', value: 10, max_discount: 1500, category_id: cat.tools.id, per_user_limit: 5 });
 
   // banners, CMS, FAQs, announcements
-  ins('banners', { title: 'Machines that build India', subtitle: 'CNC, gensets, compressors & earthmovers from verified sellers', image: svg('banner1', 'cnc', 0), link: '/#/search', sort_order: 0 });
-  ins('banners', { title: 'Power backup sale', subtitle: 'Silent DG sets with free installation', image: svg('banner3', 'generator', 2), link: '/#/category/' + cat.generator.id, sort_order: 2 });
+  if (DEMO) ins('banners', { title: 'Machines that build India', subtitle: 'CNC, gensets, compressors & earthmovers from verified sellers', image: svg('banner1', 'cnc', 0), link: '/#/search', sort_order: 0 });
+  if (DEMO) ins('banners', { title: 'Power backup sale', subtitle: 'Silent DG sets with free installation', image: svg('banner3', 'generator', 2), link: '/#/search?category_id=' + cat.generator.id, sort_order: 2 });
   const CMS = { about: ['About Mohan Mishra', 'Mohan Mishra is India\'s B2B marketplace for industrial machinery — buy or request quotes from verified sellers with GST invoices and secure escrow payments.'], terms: ['Terms of Use', 'By using the platform you agree to these terms. Payments are held in escrow and released to sellers after delivery. Disputes are mediated by the platform.'], privacy: ['Privacy Policy', 'We collect only the data needed to process orders, invoices and support. We never sell personal data. You may request deletion from your account settings.'], refund: ['Refund & Cancellation Policy', 'Orders can be cancelled free of charge before dispatch. Returns for manufacturing defects within 7 days of delivery. Refunds are processed to the original payment method within 5–7 working days.'], 'vendor-agreement': ['Seller Agreement', 'Sellers agree to list genuine products, honour quoted prices, dispatch within committed timelines and pay platform commission as per the commission schedule.'], shipping: ['Shipping Policy', 'Heavy machinery ships via seller-arranged transport with e-way bill. Delivery timelines are shown on each product.'] };
   Object.entries(CMS).forEach(([slug, [title, content]]) => ins('cms_pages', { slug, title, content, meta_title: title + ' | Mohan Mishra' }));
   [['How does payment protection work?', 'Your payment is held in escrow and released to the seller only after delivery is confirmed.', 'payments'], ['Can I pay an advance and the rest on delivery?', 'Yes — choose the Advance plan at checkout (25% advance), pay the balance before dispatch or on delivery.', 'payments'], ['Do I get a GST invoice?', 'Every order gets a GST-compliant tax invoice from the seller; input tax credit is available when you add your GSTIN.', 'gst'], ['How do I become a seller?', 'Click "Sell on Mohan Mishra", complete GST/PAN/bank KYC and start listing after approval.', 'vendor']].forEach(([q, a, c], i) => ins('faqs', { question: q, answer: a, category: c, sort_order: i }));
-  ins('announcements', { title: 'Monsoon service camp', body: 'Free pump & genset health check for orders above ₹50,000 this month.', audience: 'all' });
+  if (DEMO) ins('announcements', { title: 'Monsoon service camp', body: 'Free pump & genset health check for orders above ₹50,000 this month.', audience: 'all' });
   ins('announcements', { title: 'Settlement cycle', body: 'Vendor payouts are processed every Tuesday and Friday.', audience: 'vendors' });
   ins('crm_leads', { owner_type: 'admin', name: 'Anil Gupta', company: 'Gupta Infra Projects', mobile: '9811111111', city: 'Lucknow', source: 'website', status: 'new', value: 3500000, kind: 'customer', segment: 'construction' });
   ins('crm_leads', { owner_type: 'admin', name: 'Meera Steel Works', company: 'Meera Steel Works', mobile: '9822222222', city: 'Nagpur', source: 'referral', status: 'contacted', value: 1200000, kind: 'vendor' });

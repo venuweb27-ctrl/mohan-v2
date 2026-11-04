@@ -4,7 +4,7 @@ function shell(inner, active = '') {
   document.body.classList.remove('has-mbar'); const u = S.user; if (!active) { const hp = (location.hash.slice(1) || '/').split('?')[0]; active = hp === '/' ? 'Home' : /^\/(cart|checkout)$/.test(hp) ? 'Cart' : /^\/(account|wishlist|invoices|notifications|support)/.test(hp) ? 'Account' : ''; }
   $('#app').innerHTML = `<header class="top"><div class="bar">
     <a class="logo" href="#/"><img src="/assets/brand/logo-rounded.png" alt="Mohan Mishra"><span><b>Mohan Mishra</b><small>Machinery Marketplace</small></span></a>
-    <form class="search" id="sf" role="search"><input id="sq" placeholder="Search CNC, gensets, compressors, brands…" value="${esc(C.lastQ || '')}" autocomplete="off" list="sugg" aria-label="Search machinery"><datalist id="sugg"></datalist><button class="btn sm" aria-label="Search">${ic('search', 18)}<span class="hide-m">Search</span></button></form>
+    <form class="search" id="sf" role="search"><input id="sq" placeholder="Search concrete mixers, diesel engines, brands…" value="${esc(C.lastQ || '')}" autocomplete="off" list="sugg" aria-label="Search machinery"><datalist id="sugg"></datalist><button class="btn sm" aria-label="Search">${ic('search', 18)}<span class="hide-m">Search</span></button></form>
     <nav class="nav"><a class="pill hide-m" href="#/enquire">Get quote</a>
     <button class="iconbtn" data-theme-toggle aria-label="Toggle dark theme">${ic(themeGet() === 'dark' ? 'sun' : 'moon', 20)}</button><a class="pill hide-m" href="#/cart" aria-label="Cart">${ic('cart', 18)} <b id="cc">${S.cartCount || 0}</b></a>
     ${u ? `<a class="iconbtn chatbtn" href="#/chats" aria-label="Messages">${ic('chat', 20)}${chatBadge()}</a>` : ''}${u ? `<a class="pill hide-m" href="#/notifications" aria-label="Notifications">${ic('bell', 18)}</a><a class="pill hide-m" href="#/account">${esc((u.name || 'Me').split(' ')[0])}</a>` : `<a class="pill on" href="#/login">Login</a>`}</nav></div></header>
@@ -41,7 +41,7 @@ on('customer', '/', async () => {
   const co = S.config?.company || {};
   $('#main').innerHTML = lpHTML({
     announcement: h.announcements?.length ? `<div class="alert info">📢 <b>${esc(h.announcements[0].title)}</b> <span>${esc(h.announcements[0].body)}</span></div>` : '',
-    stats: { products: h.stats?.products || (h.featured?.length ? h.featured.length * 25 + '+' : '500+'), vendors: h.featured_vendors?.length ? h.featured_vendors.length * 10 + '+' : '100+' },
+    stats: { products: h.stats?.products ?? (h.featured?.length || '—'), vendors: h.stats?.vendors ?? (h.featured_vendors?.length || '—') },
     categories: (h.categories || []).map(c => ({ name: esc(c.name), href: `#/search?category_id=${c.id}`, image: c.image ? esc(c.image) : '', sub: c.product_count ? `${c.product_count} machines` : '' })),
     featuredHTML: h.featured?.length ? grid(h.featured.slice(0, 8)) : '<p class="muted">New machines are being added. <a href="#/search">Browse all</a></p>',
     middle: `<div class="promo"><div><b>🎉 New buyer? Use WELCOME5</b><div class="small">Extra 5% off your first machinery order. GST invoice included.</div></div><a class="btn navy" href="#/search">Start shopping</a></div>
